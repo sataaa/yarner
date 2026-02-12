@@ -1,6 +1,24 @@
 <script lang="ts">
 	// Yarner - AI-Assisted Text Adventure Player
 	// MVP v0.1.0
+
+	import FileUploader from '$lib/components/FileUploader.svelte';
+	import GamePanel from '$lib/components/GamePanel.svelte';
+	import { gameState, isGameLoaded, currentGameName, gameEngine } from '$lib/stores/gameState';
+
+	let errorMessage = '';
+
+	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
+		const { filename, data } = event.detail;
+		errorMessage = '';
+
+		try {
+			await gameState.loadGame(filename, data);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to load game';
+			console.error('Error loading game:', error);
+		}
+	}
 </script>
 
 <main>
@@ -9,19 +27,40 @@
 		<p>AI-Assisted Text Adventure Player</p>
 	</header>
 
-	<div class="container">
-		<div class="panel game-panel">
-			<h2>Text Adventure</h2>
-			<p>Upload a .z5 or .z8 game file to start</p>
-			<!-- GamePanel component will go here -->
+	{#if errorMessage}
+		<div class="error-banner">
+			<strong>Error:</strong> {errorMessage}
+			<button on:click={() => errorMessage = ''}>×</button>
 		</div>
+	{/if}
 
-		<div class="panel ai-panel">
-			<h2>AI Assistant</h2>
-			<p>Your AI companion will appear here</p>
-			<!-- AIAssistant component will go here -->
+	{#if !$isGameLoaded}
+		<div class="upload-screen">
+			<FileUploader on:gameLoaded={handleGameLoaded} />
 		</div>
-	</div>
+	{:else}
+		<div class="container">
+			<div class="panel game-panel">
+				<GamePanel gameEngine={$gameEngine} gameName={$currentGameName} />
+			</div>
+
+			<div class="panel ai-panel">
+				<div class="ai-placeholder">
+					<h2>🤖 AI Assistant</h2>
+					<p>Coming soon! The AI assistant will help you navigate the game.</p>
+					<div class="features">
+						<h3>Features (In Development):</h3>
+						<ul>
+							<li>💬 Chat about the game in real-time</li>
+							<li>🗺️ Track items and locations</li>
+							<li>💡 Get hints when you're stuck</li>
+							<li>🔍 Suggest unexplored areas</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
 
 <style>
@@ -49,16 +88,45 @@
 		color: #b0b0b0;
 	}
 
+	.error-banner {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: #ff4444;
+		color: white;
+		padding: 1rem 2rem;
+		font-size: 1rem;
+	}
+
+	.error-banner button {
+		background: none;
+		border: none;
+		color: white;
+		font-size: 1.5rem;
+		cursor: pointer;
+		padding: 0 0.5rem;
+	}
+
+	.upload-screen {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #1a1a1a;
+	}
+
 	.container {
 		display: flex;
 		flex: 1;
 		gap: 0;
+		overflow: hidden;
 	}
 
 	.panel {
 		flex: 1;
-		padding: 2rem;
-		overflow: auto;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.game-panel {
@@ -68,12 +136,53 @@
 
 	.ai-panel {
 		background: #1a1a1a;
+		padding: 2rem;
+		overflow-y: auto;
 	}
 
-	h2 {
-		margin-top: 0;
+	.ai-placeholder {
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+	.ai-placeholder h2 {
 		color: #ffa500;
-		font-size: 1.5rem;
+		font-size: 1.8rem;
+		margin-bottom: 1rem;
+	}
+
+	.ai-placeholder p {
+		color: #b0b0b0;
+		font-size: 1.1rem;
+		margin-bottom: 2rem;
+	}
+
+	.features {
+		background: #2a2a2a;
+		padding: 1.5rem;
+		border-radius: 8px;
+		margin-top: 2rem;
+	}
+
+	.features h3 {
+		color: #ffa500;
+		margin-top: 0;
+		margin-bottom: 1rem;
+	}
+
+	.features ul {
+		list-style: none;
+		padding: 0;
+	}
+
+	.features li {
+		padding: 0.75rem 0;
+		color: #e0e0e0;
+		border-bottom: 1px solid #3a3a3a;
+	}
+
+	.features li:last-child {
+		border-bottom: none;
 	}
 
 	@media (max-width: 768px) {
@@ -84,6 +193,7 @@
 		.game-panel {
 			border-right: none;
 			border-bottom: 2px solid #3a3a3a;
+			min-height: 60vh;
 		}
 	}
 </style>
