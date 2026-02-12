@@ -72,8 +72,9 @@ Inicialmente, o Master sugeriu Electron para uma aplicação desktop. Godoy ques
 - **Razão:** Performance excepcional, bundle size mínimo, reatividade nativa perfeita para split-view
 
 **Z-Machine Runtime:**
-- **Parchment.js**
-- **Razão:** JavaScript puro, 100% client-side, suporta z-machine v3-8, mantido ativamente
+- **ifvms.js** (MUDANÇA: originalmente Parchment.js)
+- **Razão:** API programática completa, permite captura de I/O em tempo real, essencial para integração com IA
+- **WebGlk custom:** Implementação web-based do Glk para ifvms.js
 
 **Backend:**
 - **Serverless Functions** (Vercel/Netlify)
@@ -224,7 +225,7 @@ yarner/
 
 ## 🔄 HISTÓRICO DE SESSÕES
 
-### Sessão 1: 2026-02-11 (Party Mode Inicial)
+### Sessão 1: 2026-02-11 (Party Mode Inicial - Setup)
 
 **Participantes:** bmad-master + Godoy
 
@@ -236,7 +237,9 @@ yarner/
 5. ✅ Definição do escopo MVP
 6. ✅ Criação de MANDAMENTOS.md
 7. ✅ Criação de MEMORIA-PROJETO.md
-8. ⏳ Inicialização do projeto SvelteKit (em andamento)
+8. ✅ Inicialização do projeto SvelteKit
+9. ✅ Estrutura básica criada
+10. ✅ Configuração Git e primeiro commit
 
 **Decisões Importantes:**
 - Web application ao invés de Electron (melhor penetração)
@@ -246,29 +249,99 @@ yarner/
 
 ---
 
+### Sessão 2: 2026-02-12 (Party Mode - Épico 1: Jogo Funcional)
+
+**Participantes:** bmad-master + Godoy
+
+**Problema Encontrado:**
+- Instalamos pacote "parchment" errado (Quill editor)
+- Parchment.js correto (curiousdannii/parchment) não tem API programática
+- Impossível capturar output do jogo para enviar à IA
+
+**Solução Implementada:**
+- **Mudança de stack:** Parchment.js → **ifvms.js**
+- ifvms.js tem API JavaScript completa com captura de I/O
+- Criamos WebGlk custom para integração web
+
+**Atividades Realizadas:**
+1. ✅ Pesquisa sobre Parchment.js e alternativas (agente Explore)
+2. ✅ Criação de plano de implementação detalhado
+3. ✅ Remoção do parchment incorreto
+4. ✅ Instalação do ifvms.js
+5. ✅ Criação do `zvm-wrapper.ts` (GameEngine + WebGlk)
+6. ✅ Criação do `FileUploader.svelte` (upload de jogos)
+7. ✅ Criação do `GamePanel.svelte` (interface terminal)
+8. ✅ Criação do `gameState.ts` (store Svelte)
+9. ✅ Integração na página principal
+10. ✅ Commit e push para GitHub
+
+**Arquivos Criados:**
+- `src/lib/zmachine/zvm-wrapper.ts` (GameEngine + WebGlk)
+- `src/lib/components/FileUploader.svelte`
+- `src/lib/components/GamePanel.svelte`
+- `src/lib/stores/gameState.ts`
+
+**Funcionalidades Implementadas:**
+- ✅ Upload de arquivos .z3, .z4, .z5, .z8
+- ✅ Carregamento e execução de jogos z-machine
+- ✅ Interface terminal com output scrollable
+- ✅ Input de comandos com histórico (setas ↑↓)
+- ✅ Botões de restart e clear output
+- ✅ Split-view preparado (jogo | placeholder IA)
+
+**Status Atual:**
+- **Épico 1: COMPLETO** ✅
+- Jogo é carregável e jogável
+- Output é capturado corretamente
+- Pronto para integração com IA (Épico 2)
+
+**Decisões Importantes:**
+- **CRÍTICA:** Projeto pode ser vendido futuramente
+- Toda documentação deve facilitar transferência para outros devs
+- Mandamentos atualizados com princípio de documentação
+- Código deve ser auto-explicativo e bem comentado
+
+**Próximos Épicos:**
+- Épico 2: Assistente IA (não iniciado)
+- Épico 3: Sistema de Tracking (não iniciado)
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
-### Imediato (Esta Sessão)
-1. ⏳ Inicializar projeto SvelteKit
-2. ⏳ Criar estrutura de diretórios
-3. ⏳ Configurar adapter-static para SPA
-4. ⏳ Criar README.md básico
+### ✅ COMPLETADO - Épico 1: Jogo Funcional
+1. ✅ Inicializar projeto SvelteKit
+2. ✅ Criar estrutura de diretórios
+3. ✅ Configurar adapter-static para SPA
+4. ✅ Criar README.md básico
+5. ✅ Integrar ifvms.js (mudança de Parchment.js)
+6. ✅ Criar componente FileUploader
+7. ✅ Criar componente GamePanel
+8. ✅ Criar gameState store
+9. ✅ Integrar tudo na página principal
 
-### Curto Prazo (Próximas Sessões)
-1. ⬜ Integrar Parchment.js
-2. ⬜ Criar componente FileUploader
-3. ⬜ Criar componente GamePanel (wrapper Parchment)
-4. ⬜ Criar componente AIAssistant (chat interface)
-5. ⬜ Implementar SplitView
-6. ⬜ Criar serverless function para Claude API
-7. ⬜ Implementar IndexedDB store para tracking
+### 🔜 PRÓXIMO - Épico 2: Assistente IA com Claude
+1. ⬜ Criar componente `AIAssistant.svelte`
+2. ⬜ Criar store `aiChat.ts` para gerenciar conversas
+3. ⬜ Implementar serverless function (proxy Claude API)
+4. ⬜ Conectar output do jogo com contexto da IA
+5. ⬜ Implementar streaming de respostas
+6. ⬜ Testar interação completa jogo + IA
 
-### Médio Prazo
-1. ⬜ Sistema de tracking de itens
-2. ⬜ Sugestões inteligentes da IA
-3. ⬜ Histórico de comandos
-4. ⬜ UI/UX polish
+### 📋 Épico 3: Sistema de Tracking com IndexedDB
+1. ⬜ Configurar IndexedDB com idb library
+2. ⬜ Tracking de itens coletados
+3. ⬜ Tracking de locais visitados
+4. ⬜ Histórico de comandos persistente
+5. ⬜ Save/load de progresso
+
+### 🚀 Médio Prazo
+1. ⬜ Sistema de tracking inteligente (IA analisa progresso)
+2. ⬜ Sugestões proativas da IA
+3. ⬜ UI/UX polish e responsividade
+4. ⬜ Testes com jogos reais (Zork, etc)
 5. ⬜ Deploy inicial (Vercel/Netlify)
+6. ⬜ Landing page e onboarding
 
 ---
 
@@ -300,8 +373,33 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 3. **Recarregar party-mode** (`/bmad-party-mode`) se a conversa for compactada
 4. **Seguir MANDAMENTOS.md** em todas as circunstâncias
 5. **Manter simplicidade** - MVP-first sempre
+6. **⚠️ CRÍTICO:** Documentar pensando em transferência futura (possível venda)
 
 ---
 
-**Última atualização:** 2026-02-11 (Sessão 1 - Setup Inicial)
-**Próxima revisão:** Após inicialização do SvelteKit
+## 📊 STATUS ATUAL DO PROJETO
+
+**Versão:** 0.2.0-alpha
+**Última Sessão:** 2026-02-12 (Sessão 2)
+**Épico Atual:** Épico 1 COMPLETO ✅
+
+**Funcionalidades Operacionais:**
+- ✅ Upload e carregamento de jogos z-machine
+- ✅ Interface de jogo funcional (terminal-style)
+- ✅ Captura de output do jogo
+- ✅ Input de comandos com histórico
+- ✅ Gerenciamento de estado (Svelte stores)
+
+**Pendente:**
+- ⬜ Assistente IA (Épico 2)
+- ⬜ Sistema de Tracking (Épico 3)
+- ⬜ Deploy em produção
+
+**Repositório GitHub:** https://github.com/sataaa/yarner
+**Branch Atual:** main
+**Último Commit:** feat: Implement z-machine game player with ifvms
+
+---
+
+**Última atualização:** 2026-02-12 (Sessão 2 - Épico 1 Completo)
+**Próxima revisão:** Antes de iniciar Épico 2 (Assistente IA)

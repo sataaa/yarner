@@ -22,6 +22,15 @@
 - Nunca desvie do que está documentado sem discussão explícita com Godoy
 - A memória do projeto é sagrada
 
+### 4️⃣ DOCUMENTAÇÃO PARA TRANSFERÊNCIA FUTURA
+- **CRÍTICO:** Este projeto pode ser vendido/transferido para outros desenvolvedores
+- Toda decisão técnica DEVE ser documentada em `MEMORIA-PROJETO.md`
+- TODO código DEVE ter comentários explicativos sobre o "por quê"
+- Arquivos complexos DEVEM ter JSDoc/TSDoc completo
+- README.md DEVE estar sempre atualizado com setup e arquitetura
+- Commits DEVEM ser descritivos e explicativos
+- **JAMAIS** assuma que "o próximo dev vai entender"
+
 ---
 
 ## 🎯 VISÃO DO PROJETO
@@ -48,9 +57,11 @@ Permitir que jogadores desfrutem de text adventures clássicos com um assistente
 - Deploy estático (Vercel/Netlify/GitHub Pages)
 
 **Z-Machine Runtime:**
-- **Parchment.js** (client-side, 100% browser)
-- Suporte inicial: Z-machine v3-8 (.z5, .z8)
+- **ifvms.js** (JavaScript Z-Machine interpreter)
+- Custom WebGlk wrapper para web integration
+- Suporte: Z-machine v3-8 (.z3, .z4, .z5, .z8)
 - Carregamento via File API do navegador
+- API programática para captura de I/O
 
 **Backend:**
 - **Serverless Functions** (Vercel/Netlify)
@@ -123,24 +134,38 @@ Permitir que jogadores desfrutem de text adventures clássicos com um assistente
 - Dados salvos localmente (IndexedDB)
 - API keys protegidas no servidor
 
+### 5. Documentação e Manutenibilidade
+- **Código limpo e auto-explicativo**
+- **Comentários para decisões não-óbvias**
+- **Documentação técnica sempre atualizada**
+- **Arquitetura clara e bem definida**
+- **Facilitar onboarding de novos desenvolvedores**
+- **Preparar para possível transferência/venda do projeto**
+
 ---
 
 ## 📁 ESTRUTURA DO PROJETO
 
 ```
 yarner/
-├── MANDAMENTOS.md          # Este arquivo
-├── MEMORIA-PROJETO.md      # Memória persistente do projeto
-├── README.md               # Documentação do projeto
+├── MANDAMENTOS.md          # ⚠️ LEIA PRIMEIRO - Regras fundamentais
+├── MEMORIA-PROJETO.md      # 📖 Histórico completo de decisões
+├── README.md               # 🚀 Setup, arquitetura e guias
 ├── src/
 │   ├── routes/            # Páginas SvelteKit
+│   │   ├── +page.svelte   # Página principal (upload/game)
+│   │   └── +layout.svelte # Layout global
 │   ├── lib/
-│   │   ├── components/    # GamePanel, AIAssistant, etc
-│   │   ├── stores/        # State management (game, IA)
-│   │   ├── api/           # Claude API integration
-│   │   └── zmachine/      # Parchment.js wrapper
+│   │   ├── components/    # Componentes reutilizáveis
+│   │   │   ├── FileUploader.svelte  # Upload de jogos
+│   │   │   └── GamePanel.svelte     # Interface do jogo
+│   │   ├── stores/        # Svelte stores (estado global)
+│   │   │   └── gameState.ts         # Estado do jogo
+│   │   ├── api/           # Integração com APIs externas
+│   │   └── zmachine/      # Z-Machine interpreter wrapper
+│   │       └── zvm-wrapper.ts       # ifvms.js + WebGlk
 │   └── app.html
-├── static/                # Assets estáticos
+├── static/                # Assets estáticos (imagens, etc)
 └── svelte.config.js       # Configuração SvelteKit
 ```
 
@@ -177,6 +202,37 @@ yarner/
 
 ---
 
-**Última atualização:** 2026-02-11
-**Versão:** 1.0
-**Status:** Iniciando desenvolvimento
+---
+
+## 📝 DIRETRIZES DE DOCUMENTAÇÃO
+
+### Para Novos Desenvolvedores
+
+**Se você está começando neste projeto:**
+
+1. **Leia OBRIGATORIAMENTE nesta ordem:**
+   - `README.md` - Overview e setup inicial
+   - `MANDAMENTOS.md` - Este arquivo (regras e princípios)
+   - `MEMORIA-PROJETO.md` - Histórico completo de decisões
+
+2. **Arquitetura do Código:**
+   - `src/lib/zmachine/zvm-wrapper.ts` - Motor do jogo (ifvms + WebGlk)
+   - `src/lib/stores/gameState.ts` - Gerenciamento de estado
+   - `src/lib/components/` - Componentes UI Svelte
+   - `src/routes/+page.svelte` - Página principal
+
+3. **Commits e PRs:**
+   - Commits descritivos usando Conventional Commits
+   - PRs com descrição clara das mudanças
+   - Sempre atualizar `MEMORIA-PROJETO.md` para decisões importantes
+
+4. **Antes de Qualquer Mudança:**
+   - Pergunte-se: "Outro dev entenderá isso em 6 meses?"
+   - Documente o "por quê", não apenas o "o quê"
+   - Atualize comentários e documentação junto com código
+
+---
+
+**Última atualização:** 2026-02-12
+**Versão:** 1.1
+**Status:** Épico 1 Completo (Jogo funcional)
