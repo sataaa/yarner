@@ -290,10 +290,10 @@ yarner/
 - ✅ Split-view preparado (jogo | placeholder IA)
 
 **Status Atual:**
-- **Épico 1: COMPLETO** ✅
-- Jogo é carregável e jogável
-- Output é capturado corretamente
-- Pronto para integração com IA (Épico 2)
+- **Épico 1: IMPLEMENTADO** ⚠️ (NÃO TESTADO)
+- Código completo mas não validado com jogo real
+- Precisa testar: upload, carregamento, gameplay
+- Após testes bem-sucedidos → marcar como COMPLETO
 
 **Decisões Importantes:**
 - **CRÍTICA:** Projeto pode ser vendido futuramente
@@ -379,18 +379,26 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ## 📊 STATUS ATUAL DO PROJETO
 
-**Versão:** 0.2.0-alpha
+**Versão:** 0.2.0-alpha (NÃO TESTADO)
 **Última Sessão:** 2026-02-12 (Sessão 2)
-**Épico Atual:** Épico 1 COMPLETO ✅
+**Épico Atual:** Épico 1 IMPLEMENTADO ⚠️ (Aguardando Testes)
 
-**Funcionalidades Operacionais:**
-- ✅ Upload e carregamento de jogos z-machine
-- ✅ Interface de jogo funcional (terminal-style)
-- ✅ Captura de output do jogo
-- ✅ Input de comandos com histórico
-- ✅ Gerenciamento de estado (Svelte stores)
+**Funcionalidades Implementadas (NÃO TESTADAS):**
+- ⚠️ Upload e carregamento de jogos z-machine (código pronto)
+- ⚠️ Interface de jogo funcional (código pronto)
+- ⚠️ Captura de output do jogo (código pronto)
+- ⚠️ Input de comandos com histórico (código pronto)
+- ⚠️ Gerenciamento de estado (código pronto)
+
+**Testes Necessários:**
+1. ⬜ Testar upload de arquivo .z5/.z8
+2. ⬜ Testar carregamento do jogo
+3. ⬜ Testar gameplay (comandos e output)
+4. ⬜ Testar histórico de comandos (setas)
+5. ⬜ Testar restart e clear
 
 **Pendente:**
+- ⬜ **Validação do Épico 1 (testes)**
 - ⬜ Assistente IA (Épico 2)
 - ⬜ Sistema de Tracking (Épico 3)
 - ⬜ Deploy em produção
