@@ -4,7 +4,8 @@
 
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
-	import { gameState, isGameLoaded, currentGameName, gameEngine } from '$lib/stores/gameState';
+	import AIAssistant from '$lib/components/AIAssistant.svelte';
+	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 
 	let errorMessage = '';
 
@@ -41,23 +42,11 @@
 	{:else}
 		<div class="container">
 			<div class="panel game-panel">
-				<GamePanel gameEngine={$gameEngine} gameName={$currentGameName} />
+				<GamePanel gameName={$currentGameName} />
 			</div>
 
 			<div class="panel ai-panel">
-				<div class="ai-placeholder">
-					<h2>🤖 AI Assistant</h2>
-					<p>Coming soon! The AI assistant will help you navigate the game.</p>
-					<div class="features">
-						<h3>Features (In Development):</h3>
-						<ul>
-							<li>💬 Chat about the game in real-time</li>
-							<li>🗺️ Track items and locations</li>
-							<li>💡 Get hints when you're stuck</li>
-							<li>🔍 Suggest unexplored areas</li>
-						</ul>
-					</div>
-				</div>
+				<AIAssistant />
 			</div>
 		</div>
 	{/if}
@@ -65,9 +54,10 @@
 
 <style>
 	main {
-		min-height: 100vh;
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
+		overflow: hidden;
 	}
 
 	header {
@@ -136,53 +126,7 @@
 
 	.ai-panel {
 		background: #1a1a1a;
-		padding: 2rem;
-		overflow-y: auto;
-	}
-
-	.ai-placeholder {
-		max-width: 500px;
-		margin: 0 auto;
-	}
-
-	.ai-placeholder h2 {
-		color: #ffa500;
-		font-size: 1.8rem;
-		margin-bottom: 1rem;
-	}
-
-	.ai-placeholder p {
-		color: #b0b0b0;
-		font-size: 1.1rem;
-		margin-bottom: 2rem;
-	}
-
-	.features {
-		background: #2a2a2a;
-		padding: 1.5rem;
-		border-radius: 8px;
-		margin-top: 2rem;
-	}
-
-	.features h3 {
-		color: #ffa500;
-		margin-top: 0;
-		margin-bottom: 1rem;
-	}
-
-	.features ul {
-		list-style: none;
-		padding: 0;
-	}
-
-	.features li {
-		padding: 0.75rem 0;
-		color: #e0e0e0;
-		border-bottom: 1px solid #3a3a3a;
-	}
-
-	.features li:last-child {
-		border-bottom: none;
+		overflow: hidden;
 	}
 
 	@media (max-width: 768px) {

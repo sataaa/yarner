@@ -44,16 +44,17 @@ export async function loadGame(filename: string, gameData: ArrayBuffer): Promise
 			engine: null
 		}));
 
-		// Load the game
-		await engine.loadGame(gameData);
-
-		// Register output callback to capture game history
+		// Register output callback BEFORE loading — the VM produces
+		// initial output (game intro text) during loadGame() → vm.init()
 		engine.onOutput((text: string) => {
 			gameStateStore.update(state => ({
 				...state,
 				gameHistory: [...state.gameHistory, text]
 			}));
 		});
+
+		// Load the game (VM runs synchronously until first input request)
+		await engine.loadGame(gameData);
 
 		// Update state to loaded
 		gameStateStore.update(state => ({
@@ -90,6 +91,16 @@ export function sendCommand(command: string): void {
 
 	// Send to engine
 	state.engine.sendCommand(command);
+}
+
+/**
+ * Add a line to game history (e.g. player command echo)
+ */
+export function addOutput(text: string): void {
+	gameStateStore.update(state => ({
+		...state,
+		gameHistory: [...state.gameHistory, text]
+	}));
 }
 
 /**
@@ -163,6 +174,7 @@ export const gameState = {
 	subscribe: gameStateStore.subscribe,
 	loadGame,
 	sendCommand,
+	addOutput,
 	clearHistory,
 	restartGame,
 	unloadGame

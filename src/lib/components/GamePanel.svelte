@@ -1,17 +1,27 @@
 <script lang="ts">
+	/**
+	 * GamePanel - Terminal-style interface for z-machine gameplay.
+	 *
+	 * Displays game output from the gameState store (single source of truth)
+	 * and sends player commands through the store's sendCommand().
+	 * Does NOT register its own onOutput callback — the store handles that.
+	 */
 	import { onMount, onDestroy } from 'svelte';
-	import type { GameEngine } from '$lib/zmachine/zvm-wrapper';
+	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 
-	export let gameEngine: GameEngine | null = null;
 	export let gameName: string = '';
 
 	let outputContainer: HTMLDivElement;
 	let commandInput: HTMLInputElement;
-	let gameOutput: string[] = [];
 	let commandHistory: string[] = [];
 	let historyIndex: number = -1;
 	let currentCommand: string = '';
-	let isWaitingForInput: boolean = false;
+
+	// Subscribe to the store's gameHistory — the single source of truth for output
+	let gameOutput: string[] = [];
+	const unsubscribe = gameState.subscribe(state => {
+		gameOutput = state.gameHistory;
+	});
 
 	// Auto-scroll to bottom when new output arrives
 	$: if (gameOutput.length > 0 && outputContainer) {
@@ -21,28 +31,11 @@
 	}
 
 	onMount(() => {
-		if (gameEngine) {
-			setupGameEngine();
-		}
-	});
-
-	function setupGameEngine() {
-		if (!gameEngine) return;
-
-		// Register output callback
-		gameEngine.onOutput((text: string) => {
-			if (text.trim()) {
-				gameOutput = [...gameOutput, text];
-			}
-		});
-
-		// Focus input field
+		// Focus the command input when the panel mounts
 		if (commandInput) {
 			commandInput.focus();
 		}
-
-		isWaitingForInput = true;
-	}
+	});
 
 	function handleCommand(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
@@ -59,24 +52,20 @@
 
 	function sendCommand() {
 		const command = currentCommand.trim();
+		if (!command) return;
 
-		if (!command || !gameEngine || !isWaitingForInput) {
-			return;
-		}
+		// Add player command echo to store history (so it shows in output)
+		gameState.addOutput(`\n> ${command}\n`);
 
-		// Add command to output
-		gameOutput = [...gameOutput, `\n> ${command}\n`];
-
-		// Add to command history
+		// Add to local command history for arrow-key navigation
 		commandHistory = [...commandHistory, command];
 		historyIndex = commandHistory.length;
 
-		// Send to game engine
+		// Send to game engine via store
 		try {
-			gameEngine.sendCommand(command);
-			isWaitingForInput = true;
+			gameState.sendCommand(command);
 		} catch (error) {
-			gameOutput = [...gameOutput, `\n[Error: ${error}]\n`];
+			gameState.addOutput(`\n[Error: ${error}]\n`);
 		}
 
 		// Clear input
@@ -103,25 +92,20 @@
 	}
 
 	function clearOutput() {
-		gameOutput = [];
+		gameState.clearHistory();
 	}
 
 	function restartGame() {
-		if (gameEngine && confirm('Are you sure you want to restart the game? Progress will be lost.')) {
-			gameOutput = [];
+		if (confirm('Are you sure you want to restart the game? Progress will be lost.')) {
 			commandHistory = [];
 			historyIndex = -1;
 			currentCommand = '';
-			gameEngine.restart();
-			isWaitingForInput = true;
+			gameState.restartGame();
 		}
 	}
 
 	onDestroy(() => {
-		// Clean up
-		if (gameEngine) {
-			gameEngine.destroy();
-		}
+		unsubscribe();
 	});
 </script>
 
@@ -160,8 +144,7 @@
 			bind:value={currentCommand}
 			bind:this={commandInput}
 			on:keydown={handleCommand}
-			placeholder={isWaitingForInput ? 'Enter command...' : 'Waiting...'}
-			disabled={!isWaitingForInput}
+			placeholder="Enter command..."
 			class="command-input"
 		/>
 	</div>
