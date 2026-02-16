@@ -10,7 +10,7 @@
 - **Significado:** "One who tells yarns/stories" + jogador
 - **Owner:** Godoy
 - **Data de Início:** 2026-02-11
-- **Status Atual:** Épico 1 COMPLETO — Épico 2 em andamento
+- **Status Atual:** Épico 1 ✅ COMPLETO — Épico 2 ✅ COMPLETO — Épico 3 pendente
 - **Linguagem de Comunicação:** Português Brasileiro
 
 ---
@@ -203,14 +203,15 @@ yarner/
 │   ├── lib/
 │   │   ├── components/
 │   │   │   ├── GamePanel.svelte       # Painel esquerdo (ifvms.js) [✅]
-│   │   │   ├── AIAssistant.svelte     # Painel direito (Chat IA) [PENDENTE]
+│   │   │   ├── AIAssistant.svelte     # Painel direito (Chat IA) [✅]
 │   │   │   └── FileUploader.svelte    # Upload .z5/.z8 [✅]
 │   │   ├── stores/
 │   │   │   ├── gameState.ts           # Estado do jogo atual [✅]
-│   │   │   ├── aiChat.ts              # Histórico do chat [PENDENTE]
+│   │   │   ├── aiPersistence.ts       # IndexedDB para IA [✅]
+│   │   │   ├── aiChat.ts              # Store central do AI chat [✅]
 │   │   │   └── tracking.ts            # Items, locations, progress [PENDENTE]
 │   │   ├── api/
-│   │   │   └── claude.ts              # Client para API [PENDENTE]
+│   │   │   └── claude.ts              # Cliente API OpenAI-compatible [✅]
 │   │   └── zmachine/
 │   │       └── zvm-wrapper.ts         # ifvms.js + WebGlk custom [✅]
 │   └── app.html
@@ -330,6 +331,68 @@ yarner/
 
 ---
 
+### Sessão 4: 2026-02-16 (Party Mode - Épico 2: Assistente IA)
+
+**Participantes:** bmad-master + Godoy
+
+**Objetivo:** Implementar o assistente IA que lê o output do jogo e ajuda o jogador.
+
+**Decisões de Design (Godoy):**
+- API key fornecida pelo usuário (client-side, sem serverless para MVP)
+- Smart diff: `lastSentGameHistoryIndex` rastreia o que já foi enviado à IA, só envia o novo
+- IA mantém "game status" estruturado (localização, inventário, objetivos, coisas não exploradas, observações) persistido em IndexedDB
+- Comportamento passivo (responde quando perguntado, não proativo)
+- Game status serve como memória entre sessões de chat (não precisa reenviar todo o histórico)
+
+**Pivô de API:**
+- Plano original: SDK Anthropic com `dangerouslyAllowBrowser: true`
+- Problema: Godoy não tem API key separada (usa claude.ai consumer)
+- Solução: **LM Studio local** em `localhost:55511` com `meta-llama-3.1-8b-instruct-abliterated`
+- Reescrito `claude.ts` para usar API OpenAI-compatible via `fetch` (sem SDK)
+
+**Bug Principal — CORS:**
+- Navegador (Windows) → LM Studio (Windows localhost:55511) bloqueado por CORS
+- O preflight OPTIONS não tinha `Access-Control-Allow-Origin`
+- Solução: Habilitar CORS nas configurações do servidor do LM Studio
+
+**Ajuste — Formato do Game Status:**
+- Modelo 8B não seguia bem o formato ` ```game-status ``` ` com backticks
+- Trocado para delimitadores de texto simples: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END`
+- Parser tornado robusto: tenta 4 padrões diferentes (novo formato, game-status, json, json genérico)
+- Streaming strip atualizado para esconder todos os formatos durante exibição ao vivo
+
+**Arquivos Criados:**
+- `src/lib/stores/aiPersistence.ts` — Persistência IndexedDB (game status + chat por jogo)
+- `src/lib/api/claude.ts` — Cliente API OpenAI-compatible com streaming SSE
+- `src/lib/stores/aiChat.ts` — Store central do AI chat (segue padrão gameState.ts)
+- `src/lib/components/AIAssistant.svelte` — Interface de chat completa
+
+**Arquivos Modificados:**
+- `src/routes/+page.svelte` — Substituído placeholder por `<AIAssistant />`
+- `vite.config.ts` — Adicionado proxy `/ai-api` (não usado no final, browser chama direto)
+
+**Funcionalidades Implementadas:**
+- ✅ Chat com IA via API OpenAI-compatible (LM Studio, Ollama, OpenAI, etc.)
+- ✅ Smart diff do game history (só envia novidades à IA)
+- ✅ Game status extraído e mantido pela IA (localização, inventário, objetivos)
+- ✅ Painel colapsável de game status (botão 📋)
+- ✅ Streaming de respostas com cursor pulsante
+- ✅ Persistência em IndexedDB (chat + game status por jogo)
+- ✅ Botão limpar chat (🗑️) preservando game status como memória
+- ✅ API key opcional (não necessária para servidores locais)
+
+**Lições Aprendidas:**
+- Modelos pequenos (8B) não seguem instruções de formato complexo com backticks; delimitadores de texto simples funcionam melhor
+- CORS é problema comum em chamadas cross-origin de localhost; LM Studio tem toggle para habilitar
+- WSL2 e Windows têm stacks de rede separados; browser no Windows chama direto o LM Studio no Windows
+- Game status como memória persistente entre sessões de chat é mais eficiente que guardar todo o log
+
+**Resultado:**
+- **Épico 2: ✅ COMPLETO E TESTADO** com LM Studio + Zork I
+- Chat funcional, game status extraído corretamente, streaming funcionando
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
 ### ✅ COMPLETADO - Épico 1: Jogo Funcional
@@ -343,13 +406,17 @@ yarner/
 8. ✅ Criar gameState store
 9. ✅ Integrar tudo na página principal
 
-### 🔜 PRÓXIMO - Épico 2: Assistente IA com Claude
-1. ⬜ Criar componente `AIAssistant.svelte`
-2. ⬜ Criar store `aiChat.ts` para gerenciar conversas
-3. ⬜ Implementar serverless function (proxy Claude API)
-4. ⬜ Conectar output do jogo com contexto da IA
-5. ⬜ Implementar streaming de respostas
-6. ⬜ Testar interação completa jogo + IA
+### ✅ COMPLETADO - Épico 2: Assistente IA
+1. ✅ Criar `aiPersistence.ts` (IndexedDB para game status e chat)
+2. ✅ Criar `claude.ts` (cliente API OpenAI-compatible)
+3. ✅ Criar `aiChat.ts` (store central do AI chat)
+4. ✅ Criar `AIAssistant.svelte` (interface de chat)
+5. ✅ Conectar output do jogo via smart diff
+6. ✅ Implementar streaming de respostas SSE
+7. ✅ Parser robusto para game status (múltiplos formatos)
+8. ✅ Painel colapsável de game status (📋)
+9. ✅ Botão limpar chat com preservação de game status (🗑️)
+10. ✅ Testar com LM Studio + Zork I
 
 ### 📋 Épico 3: Sistema de Tracking com IndexedDB
 1. ⬜ Configurar IndexedDB com idb library
@@ -402,9 +469,9 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ## 📊 STATUS ATUAL DO PROJETO
 
-**Versão:** 0.2.0-alpha
-**Última Sessão:** 2026-02-16 (Sessão 3)
-**Épico Atual:** Épico 1 ✅ COMPLETO — Iniciando Épico 2
+**Versão:** 0.3.0-alpha
+**Última Sessão:** 2026-02-16 (Sessão 4)
+**Épico Atual:** Épico 2 ✅ COMPLETO — Iniciando Épico 3
 
 **Funcionalidades Completas e Testadas:**
 - ✅ Upload e carregamento de jogos z-machine (.z3, .z4, .z5, .z8)
@@ -413,11 +480,14 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 - ✅ Input de comandos com histórico (setas ↑↓)
 - ✅ Scroll interno no painel do jogo
 - ✅ Gerenciamento de estado centralizado (Svelte store)
-- ✅ Split-view preparado (jogo | placeholder IA)
+- ✅ Assistente IA via API OpenAI-compatible (LM Studio, Ollama, OpenAI, etc.)
+- ✅ Smart diff do game history (envia apenas novidades à IA)
+- ✅ Game status estruturado mantido pela IA (localização, inventário, objetivos)
+- ✅ Persistência em IndexedDB (chat + game status por jogo)
+- ✅ Botão limpar chat preservando game status como memória
 
 **Pendente:**
-- ⬜ Assistente IA (Épico 2) — **PRÓXIMO**
-- ⬜ Sistema de Tracking (Épico 3)
+- ⬜ Sistema de Tracking (Épico 3) — **PRÓXIMO**
 - ⬜ Deploy em produção
 
 **Repositório GitHub:** https://github.com/sataaa/yarner
@@ -425,5 +495,5 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ---
 
-**Última atualização:** 2026-02-16 (Sessão 3 - Épico 1 Completo e Testado)
-**Próxima revisão:** Durante implementação do Épico 2
+**Última atualização:** 2026-02-16 (Sessão 4 - Épico 2 Completo e Testado)
+**Próxima revisão:** Durante implementação do Épico 3
