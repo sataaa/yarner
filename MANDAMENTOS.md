@@ -235,4 +235,4 @@ yarner/
 
 **Última atualização:** 2026-02-12
 **Versão:** 1.1
-**Status:** Épico 1 Completo (Jogo funcional)
+**Status:** Épico 1 Completo e Testado — Épico 2 em andamento

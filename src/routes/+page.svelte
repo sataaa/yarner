@@ -4,7 +4,7 @@
 
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
-	import { gameState, isGameLoaded, currentGameName, gameEngine } from '$lib/stores/gameState';
+	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 
 	let errorMessage = '';
 
@@ -41,7 +41,7 @@
 	{:else}
 		<div class="container">
 			<div class="panel game-panel">
-				<GamePanel gameEngine={$gameEngine} gameName={$currentGameName} />
+				<GamePanel gameName={$currentGameName} />
 			</div>
 
 			<div class="panel ai-panel">
@@ -65,9 +65,10 @@
 
 <style>
 	main {
-		min-height: 100vh;
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
+		overflow: hidden;
 	}
 
 	header {

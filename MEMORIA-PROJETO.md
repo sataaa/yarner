@@ -10,7 +10,7 @@
 - **Significado:** "One who tells yarns/stories" + jogador
 - **Owner:** Godoy
 - **Data de Início:** 2026-02-11
-- **Status Atual:** Fase inicial - Setup e planejamento
+- **Status Atual:** Épico 1 COMPLETO — Épico 2 em andamento
 - **Linguagem de Comunicação:** Português Brasileiro
 
 ---
@@ -163,13 +163,13 @@ Master perguntou sobre formatos: Z-machine, Glulx, ou web-based?
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│  3. Parchment.js processa o jogo no navegador           │
+│  3. ifvms.js processa o jogo no navegador                │
 └─────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │  4. Interface split-view carregada:                     │
-│     ├─ Esquerda: Jogo (Parchment)                       │
+│     ├─ Esquerda: Jogo (ifvms.js)                        │
 │     └─ Direita: Chat IA (Claude)                        │
 └─────────────────────────────────────────────────────────┘
                           │
@@ -202,23 +202,21 @@ yarner/
 │   │   └── +layout.svelte     # Layout global
 │   ├── lib/
 │   │   ├── components/
-│   │   │   ├── GamePanel.svelte       # Painel esquerdo (Parchment)
-│   │   │   ├── AIAssistant.svelte     # Painel direito (Chat IA)
-│   │   │   ├── FileUploader.svelte    # Upload .z5/.z8
-│   │   │   └── SplitView.svelte       # Container split
+│   │   │   ├── GamePanel.svelte       # Painel esquerdo (ifvms.js) [✅]
+│   │   │   ├── AIAssistant.svelte     # Painel direito (Chat IA) [PENDENTE]
+│   │   │   └── FileUploader.svelte    # Upload .z5/.z8 [✅]
 │   │   ├── stores/
-│   │   │   ├── gameState.ts           # Estado do jogo atual
-│   │   │   ├── aiChat.ts              # Histórico do chat
-│   │   │   └── tracking.ts            # Items, locations, progress
+│   │   │   ├── gameState.ts           # Estado do jogo atual [✅]
+│   │   │   ├── aiChat.ts              # Histórico do chat [PENDENTE]
+│   │   │   └── tracking.ts            # Items, locations, progress [PENDENTE]
 │   │   ├── api/
-│   │   │   └── claude.ts              # Client para serverless function
+│   │   │   └── claude.ts              # Client para API [PENDENTE]
 │   │   └── zmachine/
-│   │       └── parchment-wrapper.ts   # Wrapper do Parchment.js
+│   │       └── zvm-wrapper.ts         # ifvms.js + WebGlk custom [✅]
 │   └── app.html
-├── static/
-│   └── parchment/             # Parchment.js assets
+├── static/                            # Assets estáticos
 └── api/
-    └── chat.ts                # Serverless function (proxy Claude)
+    └── chat.ts                        # Serverless function (proxy Claude) [PENDENTE]
 ```
 
 ---
@@ -307,6 +305,31 @@ yarner/
 
 ---
 
+### Sessão 3: 2026-02-16 (Party Mode - Validação do Épico 1)
+
+**Participantes:** bmad-master + Godoy
+
+**Objetivo:** Testar o Épico 1 com um jogo real (Zork I)
+
+**Bugs Encontrados e Corrigidos:**
+1. **`Object.create(ZVM)` → `new ZVM()`** — ifvms.js requer instanciação com `new`, não `Object.create`
+2. **WebGlk completamente reescrito** — A implementação original era muito simplificada (~5 métodos). O ifvms.js exige ~60 métodos Glk (output, input, windows, streams, styles, gestalt, etc.). Reescrito com implementação completa.
+3. **Callback de output registrado antes de `loadGame()`** — O VM produz texto inicial durante `vm.init()`, mas o callback era registrado depois, perdendo o texto introdutório do jogo.
+4. **GamePanel refatorado para usar store como fonte única de verdade** — GamePanel tinha seu próprio array local `gameOutput` e registrava um `onOutput()` que substituía o do store. Refatorado para ler de `gameState.gameHistory` (store) e não duplicar callbacks.
+5. **Referência a `isWaitingForInput` removida do template** — Variável foi removida do script mas permanecia no HTML.
+6. **Layout com scroll correto** — `min-height: 100vh` → `height: 100vh` + `overflow: hidden` para que o output do jogo tenha scroll interno ao invés de expandir a página inteira.
+
+**Lições Aprendidas:**
+- ifvms.js depende de uma implementação Glk robusta; não funciona com stubs mínimos
+- A ordem de registro de callbacks é crítica — sempre registrar antes da operação que produz output
+- Evitar múltiplos pontos de registro de callback (fonte única de verdade no store)
+
+**Resultado:**
+- **Épico 1: ✅ COMPLETO E TESTADO** com Zork I (.z5)
+- Upload funcional, texto inicial aparecendo, gameplay funcionando, scroll correto
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
 ### ✅ COMPLETADO - Épico 1: Jogo Funcional
@@ -379,35 +402,28 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ## 📊 STATUS ATUAL DO PROJETO
 
-**Versão:** 0.2.0-alpha (NÃO TESTADO)
-**Última Sessão:** 2026-02-12 (Sessão 2)
-**Épico Atual:** Épico 1 IMPLEMENTADO ⚠️ (Aguardando Testes)
+**Versão:** 0.2.0-alpha
+**Última Sessão:** 2026-02-16 (Sessão 3)
+**Épico Atual:** Épico 1 ✅ COMPLETO — Iniciando Épico 2
 
-**Funcionalidades Implementadas (NÃO TESTADAS):**
-- ⚠️ Upload e carregamento de jogos z-machine (código pronto)
-- ⚠️ Interface de jogo funcional (código pronto)
-- ⚠️ Captura de output do jogo (código pronto)
-- ⚠️ Input de comandos com histórico (código pronto)
-- ⚠️ Gerenciamento de estado (código pronto)
-
-**Testes Necessários:**
-1. ⬜ Testar upload de arquivo .z5/.z8
-2. ⬜ Testar carregamento do jogo
-3. ⬜ Testar gameplay (comandos e output)
-4. ⬜ Testar histórico de comandos (setas)
-5. ⬜ Testar restart e clear
+**Funcionalidades Completas e Testadas:**
+- ✅ Upload e carregamento de jogos z-machine (.z3, .z4, .z5, .z8)
+- ✅ Interface de jogo funcional (terminal-style)
+- ✅ Captura de output do jogo via WebGlk custom
+- ✅ Input de comandos com histórico (setas ↑↓)
+- ✅ Scroll interno no painel do jogo
+- ✅ Gerenciamento de estado centralizado (Svelte store)
+- ✅ Split-view preparado (jogo | placeholder IA)
 
 **Pendente:**
-- ⬜ **Validação do Épico 1 (testes)**
-- ⬜ Assistente IA (Épico 2)
+- ⬜ Assistente IA (Épico 2) — **PRÓXIMO**
 - ⬜ Sistema de Tracking (Épico 3)
 - ⬜ Deploy em produção
 
 **Repositório GitHub:** https://github.com/sataaa/yarner
 **Branch Atual:** main
-**Último Commit:** feat: Implement z-machine game player with ifvms
 
 ---
 
-**Última atualização:** 2026-02-12 (Sessão 2 - Épico 1 Completo)
-**Próxima revisão:** Antes de iniciar Épico 2 (Assistente IA)
+**Última atualização:** 2026-02-16 (Sessão 3 - Épico 1 Completo e Testado)
+**Próxima revisão:** Durante implementação do Épico 2
