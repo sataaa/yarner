@@ -12,6 +12,18 @@ import { openDB, type IDBPDatabase } from 'idb';
 
 // ---- Types ----
 
+/** State of a single visited location: exits and notes */
+export interface LocalVisitado {
+	/**
+	 * Map of directions to destinations.
+	 * Value is the destination location name if explored, or "não explorado" if not.
+	 * Example: { "north": "Forest Path", "south": "não explorado" }
+	 */
+	saidas: Record<string, string>;
+	/** Notes about this location's state (items on floor, locked doors, etc.) */
+	notas: string[];
+}
+
 /** Structured game status maintained by the AI across interactions */
 export interface GameStatus {
 	/** Current player location in the game world */
@@ -24,6 +36,11 @@ export interface GameStatus {
 	coisasNaoExploradas: string[];
 	/** General observations and notes about the game state */
 	observacoes: string[];
+	/**
+	 * Map of all visited locations with their exits and notes.
+	 * Key: location name. Value: exits (direction → destination) and notes.
+	 */
+	locaisVisitados: Record<string, LocalVisitado>;
 	/** ISO timestamp of when this status was last updated */
 	ultimaAtualizacao: string;
 }
@@ -108,6 +125,7 @@ export function createEmptyGameStatus(): GameStatus {
 		objetivos: [],
 		coisasNaoExploradas: [],
 		observacoes: [],
+		locaisVisitados: {},
 		ultimaAtualizacao: new Date().toISOString()
 	};
 }
