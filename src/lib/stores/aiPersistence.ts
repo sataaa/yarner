@@ -52,6 +52,26 @@ export interface AIChatMessage {
 	timestamp: number;
 }
 
+/**
+ * A manual save slot created by the player.
+ * Stores the full VM snapshot (from do_autosave) plus the visible game history
+ * and the original game file so the game can be restored in future sessions.
+ */
+export interface SaveSlot {
+	slotName: string;
+	gameName: string;
+	timestamp: string;
+	/** VM snapshot from GameEngine.saveSnapshot() */
+	snapshot: any;
+	/** Game output lines at the time of saving (shown on restore) */
+	gameHistory: string[];
+	/** Original game file — needed to recreate the static ROM on restore */
+	gameData: ArrayBuffer;
+}
+
+/** All save slots for one game, keyed by slotName */
+export type GameSaveSlots = Record<string, SaveSlot>;
+
 // ---- IndexedDB Schema ----
 
 interface YarnerAIDB {
@@ -63,20 +83,29 @@ interface YarnerAIDB {
 		key: string;
 		value: AIChatMessage[];
 	};
+	/** Save slots keyed by gameName; each value is a map of slotName → SaveSlot */
+	gameSaves: {
+		key: string;
+		value: GameSaveSlots;
+	};
 }
 
 const DB_NAME = 'yarner-ai';
-const DB_VERSION = 1;
+// Version 2: added gameSaves object store
+const DB_VERSION = 2;
 
 /** Open (or create) the IndexedDB database */
 async function getDB(): Promise<IDBPDatabase<YarnerAIDB>> {
 	return openDB<YarnerAIDB>(DB_NAME, DB_VERSION, {
-		upgrade(db) {
-			if (!db.objectStoreNames.contains('gameStatus')) {
+		upgrade(db, oldVersion) {
+			// v1 stores (create on fresh install or upgrade from scratch)
+			if (oldVersion < 1) {
 				db.createObjectStore('gameStatus');
-			}
-			if (!db.objectStoreNames.contains('chatHistory')) {
 				db.createObjectStore('chatHistory');
+			}
+			// v2: manual save slots
+			if (oldVersion < 2) {
+				db.createObjectStore('gameSaves');
 			}
 		}
 	});
@@ -104,6 +133,34 @@ export async function saveChatHistory(gameName: string, messages: AIChatMessage[
 export async function loadChatHistory(gameName: string): Promise<AIChatMessage[]> {
 	const db = await getDB();
 	return (await db.get('chatHistory', gameName)) || [];
+}
+
+// ---- Save Slots ----
+
+/** Return all save slots for a game (empty object if none exist) */
+export async function getSaveSlots(gameName: string): Promise<GameSaveSlots> {
+	const db = await getDB();
+	return (await db.get('gameSaves', gameName)) ?? {};
+}
+
+/** Create or overwrite a single save slot */
+export async function writeSaveSlot(gameName: string, slot: SaveSlot): Promise<void> {
+	const db = await getDB();
+	const existing = (await db.get('gameSaves', gameName)) ?? {};
+	existing[slot.slotName] = slot;
+	await db.put('gameSaves', existing, gameName);
+}
+
+/** Delete a single save slot; removes the game entry if no slots remain */
+export async function deleteSaveSlot(gameName: string, slotName: string): Promise<void> {
+	const db = await getDB();
+	const existing = (await db.get('gameSaves', gameName)) ?? {};
+	delete existing[slotName];
+	if (Object.keys(existing).length === 0) {
+		await db.delete('gameSaves', gameName);
+	} else {
+		await db.put('gameSaves', existing, gameName);
+	}
 }
 
 // ---- Cleanup ----
