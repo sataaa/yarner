@@ -8,6 +8,7 @@
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
+	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
 
 	export let gameName: string = '';
 
@@ -16,6 +17,16 @@
 	let commandHistory: string[] = [];
 	let historyIndex: number = -1;
 	let currentCommand: string = '';
+
+	// ---- Save / Load UI state ----
+	let showSavePanel = false;
+	let showLoadPanel = false;
+	let saveSlotName = '';
+	let saveSlots: GameSaveSlots = {};
+	let saveMessage = '';   // feedback shown briefly after save/load
+	let isSaving = false;
+	let isLoadingSlot = false;
+	let slotNameInput: HTMLInputElement;
 
 	// Subscribe to the store's gameHistory — the single source of truth for output
 	let gameOutput: string[] = [];
@@ -26,7 +37,7 @@
 	// Auto-scroll to bottom when new output arrives
 	$: if (gameOutput.length > 0 && outputContainer) {
 		setTimeout(() => {
-			outputContainer.scrollTop = outputContainer.scrollHeight;
+			if (outputContainer) outputContainer.scrollTop = outputContainer.scrollHeight;
 		}, 10);
 	}
 
@@ -104,6 +115,76 @@
 		}
 	}
 
+	// ---- Save / Load helpers ----
+
+	function showFeedback(msg: string) {
+		saveMessage = msg;
+		setTimeout(() => { saveMessage = ''; }, 2500);
+	}
+
+	async function openLoadPanel() {
+		showSavePanel = false;
+		saveSlots = await gameState.getSaveSlotList();
+		showLoadPanel = true;
+	}
+
+	function openSavePanel() {
+		showLoadPanel = false;
+		saveSlotName = '';
+		showSavePanel = true;
+		// Refresh slot list so "overwrite" warning works
+		gameState.getSaveSlotList().then(s => { saveSlots = s; });
+		// Focus input on next tick (after Svelte renders the panel)
+		setTimeout(() => { slotNameInput?.focus(); }, 30);
+	}
+
+	async function confirmSave() {
+		const name = saveSlotName.trim();
+		if (!name) return;
+		isSaving = true;
+		try {
+			await gameState.saveGame(name);
+			showSavePanel = false;
+			saveSlotName = '';
+			showFeedback(`Salvo: "${name}"`);
+		} catch (err) {
+			showFeedback(`Erro ao salvar: ${err}`);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	async function loadSlot(slot: SaveSlot) {
+		if (!confirm(`Restaurar "${slot.slotName}"? O progresso atual será perdido.`)) return;
+		isLoadingSlot = true;
+		showLoadPanel = false;
+		try {
+			await gameState.loadFromSaveSlot(slot);
+			commandHistory = [];
+			historyIndex = -1;
+			currentCommand = '';
+			showFeedback(`Carregado: "${slot.slotName}"`);
+		} catch (err) {
+			showFeedback(`Erro ao carregar: ${err}`);
+		} finally {
+			isLoadingSlot = false;
+		}
+	}
+
+	async function deleteSlot(slotName: string) {
+		if (!confirm(`Deletar slot "${slotName}"?`)) return;
+		await gameState.removeSaveSlot(slotName);
+		saveSlots = await gameState.getSaveSlotList();
+	}
+
+	function formatTimestamp(iso: string): string {
+		try {
+			return new Date(iso).toLocaleString('pt-BR');
+		} catch {
+			return iso;
+		}
+	}
+
 	onDestroy(() => {
 		unsubscribe();
 	});
@@ -113,14 +194,79 @@
 	<div class="game-header">
 		<h2 class="game-title">{gameName || 'Interactive Fiction'}</h2>
 		<div class="game-controls">
-			<button class="btn-icon" on:click={clearOutput} title="Clear output">
+			<button class="btn-icon" on:click={openSavePanel} title="Salvar jogo" disabled={isLoadingSlot}>
+				💾
+			</button>
+			<button class="btn-icon" on:click={openLoadPanel} title="Carregar jogo" disabled={isLoadingSlot}>
+				📂
+			</button>
+			<button class="btn-icon" on:click={clearOutput} title="Limpar output">
 				🗑️
 			</button>
-			<button class="btn-icon" on:click={restartGame} title="Restart game">
+			<button class="btn-icon" on:click={restartGame} title="Reiniciar jogo">
 				🔄
 			</button>
 		</div>
 	</div>
+
+	{#if saveMessage}
+		<div class="save-feedback">{saveMessage}</div>
+	{/if}
+
+	{#if showSavePanel}
+		<div class="save-load-panel">
+			<div class="panel-title">💾 Salvar Jogo</div>
+			<div class="panel-row">
+				<input
+					class="slot-input"
+					type="text"
+					placeholder="Nome do slot..."
+					bind:value={saveSlotName}
+					bind:this={slotNameInput}
+					on:keydown={(e) => e.key === 'Enter' && confirmSave()}
+					maxlength="40"
+				/>
+				<button class="btn-confirm" on:click={confirmSave} disabled={!saveSlotName.trim() || isSaving}>
+					{isSaving ? '...' : 'Salvar'}
+				</button>
+				<button class="btn-cancel" on:click={() => { showSavePanel = false; }}>✕</button>
+			</div>
+			{#if saveSlots[saveSlotName.trim()]}
+				<div class="overwrite-warn">⚠️ Este slot já existe e será sobrescrito.</div>
+			{/if}
+		</div>
+	{/if}
+
+	{#if showLoadPanel}
+		<div class="save-load-panel">
+			<div class="panel-header-row">
+				<div class="panel-title">📂 Carregar Jogo</div>
+				<button class="btn-cancel" on:click={() => { showLoadPanel = false; }}>✕</button>
+			</div>
+			{#if Object.keys(saveSlots).length === 0}
+				<div class="no-slots">Nenhum save encontrado para "{gameName}".</div>
+			{:else}
+				<div class="slot-list">
+					{#each Object.values(saveSlots).sort((a, b) => b.timestamp.localeCompare(a.timestamp)) as slot}
+						<div class="slot-item">
+							<div class="slot-info">
+								<span class="slot-name">{slot.slotName}</span>
+								<span class="slot-date">{formatTimestamp(slot.timestamp)}</span>
+							</div>
+							<div class="slot-actions">
+								<button class="btn-load" on:click={() => loadSlot(slot)} disabled={isLoadingSlot}>
+									Carregar
+								</button>
+								<button class="btn-delete" on:click={() => deleteSlot(slot.slotName)} title="Deletar slot">
+									🗑
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="output-container" bind:this={outputContainer}>
 		{#if gameOutput.length === 0}
@@ -304,5 +450,178 @@
 		color: #888;
 		font-size: 0.9rem;
 		font-style: italic;
+	}
+
+	/* ---- Save / Load UI ---- */
+
+	.save-feedback {
+		background: #2a3a2a;
+		color: #90d090;
+		text-align: center;
+		padding: 0.4rem 1rem;
+		font-size: 0.9rem;
+		border-bottom: 1px solid #3a5a3a;
+	}
+
+	.save-load-panel {
+		background: #222;
+		border-bottom: 1px solid #3a3a3a;
+		padding: 0.75rem 1.5rem;
+	}
+
+	.panel-title {
+		font-size: 0.9rem;
+		color: #aaa;
+		margin-bottom: 0.5rem;
+		font-weight: 600;
+	}
+
+	.panel-header-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.panel-row {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.slot-input {
+		flex: 1;
+		background: #1a1a1a;
+		border: 1px solid #4a4a4a;
+		color: #e0e0e0;
+		padding: 0.4rem 0.75rem;
+		border-radius: 4px;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.9rem;
+	}
+
+	.slot-input:focus {
+		outline: none;
+		border-color: #ffa500;
+	}
+
+	.btn-confirm {
+		background: #2a4a2a;
+		border: 1px solid #4a7a4a;
+		color: #90d090;
+		padding: 0.4rem 1rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+
+	.btn-confirm:hover:not(:disabled) {
+		background: #3a6a3a;
+	}
+
+	.btn-confirm:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-cancel {
+		background: #3a3a3a;
+		border: none;
+		color: #aaa;
+		padding: 0.4rem 0.6rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+
+	.btn-cancel:hover {
+		background: #4a4a4a;
+	}
+
+	.overwrite-warn {
+		margin-top: 0.4rem;
+		color: #e0a050;
+		font-size: 0.82rem;
+	}
+
+	.no-slots {
+		color: #888;
+		font-size: 0.9rem;
+		padding: 0.25rem 0;
+	}
+
+	.slot-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		max-height: 180px;
+		overflow-y: auto;
+	}
+
+	.slot-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: #1a1a1a;
+		border: 1px solid #3a3a3a;
+		border-radius: 4px;
+		padding: 0.4rem 0.75rem;
+	}
+
+	.slot-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
+	.slot-name {
+		color: #e0e0e0;
+		font-size: 0.9rem;
+		font-weight: 600;
+	}
+
+	.slot-date {
+		color: #888;
+		font-size: 0.78rem;
+	}
+
+	.slot-actions {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+	}
+
+	.btn-load {
+		background: #2a3a5a;
+		border: 1px solid #4a5a8a;
+		color: #90aaff;
+		padding: 0.3rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.85rem;
+	}
+
+	.btn-load:hover:not(:disabled) {
+		background: #3a4a7a;
+	}
+
+	.btn-load:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-delete {
+		background: none;
+		border: none;
+		color: #888;
+		padding: 0.3rem;
+		cursor: pointer;
+		font-size: 0.9rem;
+		border-radius: 4px;
+	}
+
+	.btn-delete:hover {
+		background: #3a2a2a;
+		color: #e08080;
 	}
 </style>
