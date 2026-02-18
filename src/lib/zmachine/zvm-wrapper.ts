@@ -65,6 +65,14 @@ interface GlkWindow {
   str: GlkStream;     // Every window has an associated output stream
   request_line?: any;  // Pending line input request buffer
   request_char?: boolean; // Pending char input request
+  /**
+   * linebuf: same array as request_line, exposed under the name that
+   * do_autorestore() expects to find ("obj.linebuf") so it can reconnect
+   * vm.read_data.buffer after a snapshot restore.
+   * Note: clone() in ifvms.js intentionally skips the "buffer" property,
+   * so do_autorestore must find the buffer via linebuf on the window object.
+   */
+  linebuf?: any[];
 }
 
 /** Represents a Glk I/O stream */
@@ -310,6 +318,9 @@ class WebGlk {
    */
   glk_request_line_event_uni(win: GlkWindow, buffer: any[], _initLen: number): void {
     win.request_line = buffer;
+    // linebuf is the name do_autorestore() looks for when reconnecting
+    // vm.read_data.buffer after a snapshot restore (clone() skips "buffer" prop)
+    win.linebuf = buffer;
     this.pendingInputWindow = win;
     this.pendingInputBuffer = buffer;
     this.pendingCharInput = false;
@@ -458,12 +469,85 @@ class WebGlk {
     return buf.length;
   }
 
-  /** State serialization for autosave (not yet implemented) */
-  save_allstate(): any {
-    return null;
+  /** Find the main text-buffer window (type 3) */
+  getMainWindow(): GlkWindow | null {
+    return this.windows.find(w => w.type === 3) ?? null;
   }
 
-  restore_allstate(_state: any): void {}
+  /**
+   * Serialize Glk window/stream state for do_autosave snapshots.
+   * Called by the VM's do_autosave(); the returned value is stored in
+   * snapshot.glk and later passed to restore_allstate().
+   */
+  save_allstate(): any {
+    return {
+      windows: this.windows.map(w => ({
+        id: w.id,
+        type: w.type,
+        rock: w.rock,
+        strId: w.str.id,
+        strRock: w.str.rock
+      })),
+      streams: this.streams.map(s => ({
+        id: s.id,
+        rock: s.rock,
+        writable: s.writable
+      })),
+      nextId: this.nextId,
+      currentWindowId: this.currentWindow?.id ?? null,
+      // Save which window was waiting for input so we can reconnect after restore
+      pendingInputWindowId: this.pendingInputWindow?.id ?? null,
+      pendingCharInput: this.pendingCharInput
+    };
+  }
+
+  /**
+   * Restore Glk window/stream state from a snapshot.
+   * Called by do_autorestore() before the VM RAM is restored.
+   * After this, the VM iterates windows/streams via glk_window_iterate /
+   * glk_stream_iterate to re-link its internal mainwin/statuswin references.
+   */
+  restore_allstate(state: any): void {
+    if (!state) return;
+
+    this.nextId = state.nextId;
+
+    // Recreate streams (content is transient — no need to persist)
+    this.streams = (state.streams as any[]).map(s => ({
+      id: s.id,
+      rock: s.rock,
+      writable: s.writable,
+      content: ''
+    } as GlkStream));
+
+    // Recreate windows, linking each to its stream.
+    // Text-buffer windows (type 3) get a fresh linebuf array so that
+    // do_autorestore() can set snapshot.read_data.buffer = obj.linebuf,
+    // which reconnects vm.read_data.buffer (clone() skips the "buffer" prop).
+    this.windows = (state.windows as any[]).map(w => {
+      const str = this.streams.find(s => s.id === w.strId) ?? this.streams[0];
+      const win: GlkWindow = { id: w.id, type: w.type, rock: w.rock, str };
+      if (w.type === 3) {
+        win.linebuf = new Array(256).fill(0);
+      }
+      return win;
+    });
+
+    // Restore active window
+    this.currentWindow = state.currentWindowId !== null
+      ? (this.windows.find(w => w.id === state.currentWindowId) ?? null)
+      : null;
+
+    // Restore pending input window (buffer reconnected later by GameEngine)
+    this.pendingInputWindow = state.pendingInputWindowId !== null
+      ? (this.windows.find(w => w.id === state.pendingInputWindowId) ?? null)
+      : null;
+    this.pendingCharInput = state.pendingCharInput ?? false;
+
+    // Reset event/buffer state — vm.init() will call glk_select() after restore
+    this.pendingEvent = null;
+    this.pendingInputBuffer = null;
+  }
 
   // ---- Display update ----
 
@@ -635,10 +719,100 @@ export class GameEngine {
     }
   }
 
-  /** Get current game state (placeholder for future save support) */
-  getGameState(): any {
-    if (!this.vm) return null;
-    return { initialized: this.isInitialized };
+  /**
+   * Create a full VM snapshot using ifvms.js's do_autosave mechanism.
+   * The snapshot includes RAM, stacks, Glk state, I/O state, and the RNG seed.
+   * Returns null if the game is not loaded.
+   *
+   * Called by gameState.saveGame() when the user clicks the Save button.
+   */
+  saveSnapshot(): any {
+    if (!this.vm || !this.isInitialized) return null;
+
+    let capturedSnapshot: any = null;
+
+    // Temporarily inject a Dialog so do_autosave has somewhere to write the snapshot
+    const prevDialog = this.vm.options?.Dialog ?? null;
+    this.vm.options = this.vm.options ?? {};
+    this.vm.options.Dialog = {
+      streaming: false,
+      autosave_write: (_sig: string, snapshot: any) => {
+        capturedSnapshot = snapshot;
+      }
+    };
+
+    try {
+      // save=1 → create snapshot (save=−1 would clear/null it)
+      this.vm.do_autosave(1);
+    } finally {
+      this.vm.options.Dialog = prevDialog;
+    }
+
+    return capturedSnapshot;
+  }
+
+  /**
+   * Restore the VM from a snapshot previously created by saveSnapshot().
+   *
+   * A new VM is created from scratch (with the same game file) so that the
+   * static ROM is re-established, then do_autorestore() reloads the dynamic
+   * RAM and execution state. After this call the engine is ready for input
+   * just as if the game had been played to that point.
+   *
+   * @param gameData  The original game ArrayBuffer (same file used to first load)
+   * @param snapshot  Snapshot object returned by saveSnapshot()
+   */
+  async restoreFromSnapshot(gameData: ArrayBuffer, snapshot: any): Promise<void> {
+    // Preserve the output callback across the VM recreation
+    const savedCallback = this.outputCallback;
+    this.destroy();
+
+    // Fresh WebGlk
+    this.glk = new WebGlk((text) => {
+      if (this.outputCallback !== this.defaultCallback) {
+        this.outputCallback(text);
+      } else {
+        this.earlyOutputBuffer.push(text);
+      }
+    });
+
+    // Restore callback immediately so output from the restore appears normally
+    this.outputCallback = savedCallback;
+
+    this.vm = new ZVM();
+
+    // prepare() with a Dialog that returns our snapshot when asked for autorestore
+    this.vm.prepare(gameData, {
+      Glk: this.glk,
+      do_vm_autosave: true,   // signal to start() to attempt autorestore
+      Dialog: {
+        streaming: false,
+        autosave_read: () => snapshot,
+        autosave_write: () => {} // no-op — we don't need re-saving on restore
+      }
+    });
+
+    // init() → start() → do_autorestore(snapshot) internally
+    // The VM restores RAM, stacks, PC, then calls glk_select() and update()
+    this.vm.init();
+
+    // After do_autorestore, the VM is waiting for line input but
+    // pendingInputBuffer is null (glk_request_line_event_uni was not re-called).
+    //
+    // do_autorestore reconnects vm.read_data.buffer = mainWin.linebuf  (the
+    // fresh buffer we created in restore_allstate). We must also point
+    // pendingInputBuffer at that same array so sendCommand() writes there.
+    if (this.glk.pendingEvent && !this.glk.pendingInputBuffer && !this.glk.pendingCharInput) {
+      const mainWin = this.glk.getMainWindow();
+      if (mainWin) {
+        this.glk.pendingInputWindow = mainWin;
+        // Use linebuf (set by do_autorestore via restore_allstate) so that
+        // pendingInputBuffer === vm.read_data.buffer (same array object).
+        this.glk.pendingInputBuffer = mainWin.linebuf ?? this.vm.read_data?.buffer ?? [];
+      }
+    }
+
+    this.isInitialized = true;
   }
 
   /** Clean up all resources */

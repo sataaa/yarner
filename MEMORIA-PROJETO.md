@@ -10,7 +10,7 @@
 - **Significado:** "One who tells yarns/stories" + jogador
 - **Owner:** Godoy
 - **Data de Início:** 2026-02-11
-- **Status Atual:** Épico 1 ✅ COMPLETO — Épico 2 ✅ COMPLETO — Épico 3 pendente
+- **Status Atual:** Épicos 1, 2, 3 ✅ COMPLETOS — Épico 4 em andamento
 - **Linguagem de Comunicação:** Português Brasileiro
 
 ---
@@ -446,6 +446,41 @@ yarner/
 
 ---
 
+### Sessão 6: 2026-02-18 (Épico 4 – Save/Load)
+
+**Participantes:** Claude Code + Godoy
+
+**Objetivo:** Implementar save/load de progresso do jogo (Épico 4, primeiro item).
+
+**Abordagem Escolhida:** Save/load externo via `do_autosave`/`do_autorestore` do ifvms.js (botões externos, sem usar o comando "save" do jogo).
+
+**Arquitetura:**
+- `GameEngine.saveSnapshot()` — injeta um Dialog temporário em `vm.options` e chama `vm.do_autosave(1)`, capturando o snapshot (RAM + stacks + Glk state + I/O state + RNG seed)
+- `GameEngine.restoreFromSnapshot(gameData, snapshot)` — cria uma VM nova com `do_vm_autosave: true` e um Dialog cujo `autosave_read` retorna o snapshot salvo. Após `vm.init()`, reconecta manualmente `glk.pendingInputBuffer = vm.read_data.buffer`
+- `WebGlk.save_allstate()` — serializa janelas e streams para o snapshot
+- `WebGlk.restore_allstate(state)` — recria janelas e streams a partir do snapshot
+- `aiPersistence.ts` — novo store `gameSaves` (DB versão 2), interface `SaveSlot` com `{ slotName, gameName, timestamp, snapshot, gameHistory, gameData }`
+- `gameState.ts` — guarda `gameData` no estado; funções `saveGame`, `loadFromSaveSlot`, `getSaveSlotList`, `removeSaveSlot`
+- `GamePanel.svelte` — botões 💾 e 📂 com painéis inline de save/load
+
+**Decisão Importante:** O `gameData` (ArrayBuffer do arquivo .z5) é salvo no slot para suportar restore cross-session sem o usuário precisar recarregar o arquivo.
+
+**Detalhe técnico crítico:** Após `do_autorestore`, o VM não re-executa `glk_request_line_event_uni`, então `pendingInputBuffer` fica null. A solução é reconectar manualmente: `glk.pendingInputBuffer = vm.read_data.buffer`.
+
+**Arquivos Modificados:**
+- `src/lib/zmachine/zvm-wrapper.ts` — save_allstate, restore_allstate, getMainWindow, saveSnapshot, restoreFromSnapshot
+- `src/lib/stores/aiPersistence.ts` — SaveSlot, GameSaveSlots, getSaveSlots, writeSaveSlot, deleteSaveSlot, DB v2
+- `src/lib/stores/gameState.ts` — gameData no estado, saveGame, loadFromSaveSlot, getSaveSlotList, removeSaveSlot
+- `src/lib/components/GamePanel.svelte` — UI de save/load com slots nomeados
+
+**Bugs corrigidos durante testes:**
+1. **`options.buffer` undefined no `handle_line_input`** — `clone()` do ifvms.js pula intencionalmente a prop `buffer`. O `do_autorestore` recupera o buffer via `obj.linebuf` na janela Glk. Fix: setar `win.linebuf = buffer` em `glk_request_line_event_uni` e criar `linebuf` fresco em `restore_allstate` para janelas type-3 (text buffer). Assim o `do_autorestore` consegue settar `read_data.buffer = win.linebuf`.
+2. **`scrollHeight` null** — reactive auto-scroll disparava durante o estado transiente de unload/reload. Fix: guard `if (outputContainer)` dentro do setTimeout.
+
+**Resultado:** ✅ Testado com Zork I. Save e Load funcionando.
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
 ### ✅ COMPLETADO - Épico 1: Jogo Funcional
@@ -479,8 +514,8 @@ yarner/
 5. ✅ Botão 🗺️ inline no painel da IA
 6. ✅ Expansão para terceira coluna (store `locationMapExpanded`)
 
-### 📋 Épico 4: Próximas Melhorias (a definir com Godoy)
-1. ⬜ Save/load de progresso do jogo
+### 📋 Épico 4: Próximas Melhorias
+1. ✅ Save/load de progresso do jogo
 2. ⬜ UI/UX polish e responsividade
 3. ⬜ Sugestões proativas da IA (modo ativo)
 4. ⬜ Testes com outros jogos além de Zork I
@@ -558,5 +593,5 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ---
 
-**Última atualização:** 2026-02-18 (Sessão 5 - Épico 3 Completo e Testado)
-**Próxima revisão:** Durante implementação do Épico 4
+**Última atualização:** 2026-02-18 (Sessão 6 - Save/Load implementado e testado)
+**Próxima revisão:** Sessão 7
