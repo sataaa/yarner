@@ -152,18 +152,26 @@ ${gameHistoryDiff || '(nenhuma novidade no jogo ainda)'}
 STATUS ATUAL DO JOGO (mantido por voce):
 ${JSON.stringify(gameStatus, null, 2)}
 
-INSTRUCAO IMPORTANTE: Ao final de CADA resposta, inclua EXATAMENTE este bloco (sem mudar o formato):
+INSTRUCAO IMPORTANTE: Ao final de CADA resposta, adicione EXATAMENTE este bloco. NAO mencione o bloco nem fale sobre ele na sua resposta visivel — apenas inclua-o em silencio ao final:
 
 GAME_STATUS_JSON_START
-{"localizacaoAtual":"descricao do local atual","inventario":["item1","item2"],"objetivos":["objetivo1","objetivo2"],"coisasNaoExploradas":["algo mencionado mas nao examinado"],"observacoes":["notas uteis sobre o jogo"]}
+{"localizacaoAtual":"nome exato do local atual","inventario":["item1","item2"],"objetivos":["obj1"],"coisasNaoExploradas":["algo nao examinado"],"observacoes":["nota util"],"locaisVisitados":{}}
 GAME_STATUS_JSON_END
 
-Regras do bloco de status:
-- Use GAME_STATUS_JSON_START e GAME_STATUS_JSON_END como delimitadores (NAO use crases/backticks)
-- O JSON deve estar em UMA UNICA LINHA entre os delimitadores
-- Atualize os campos baseado no contexto do jogo
-- Se nada mudou, retorne o status anterior sem alteracoes
-- SEMPRE inclua o bloco ao final da resposta`;
+Regras obrigatorias:
+- NAO escreva "O status do jogo agora e:" nem qualquer introducao antes do bloco
+- Use GAME_STATUS_JSON_START e GAME_STATUS_JSON_END como delimitadores (NAO use crases)
+- O JSON em UMA UNICA LINHA entre os delimitadores
+- Atualize localizacaoAtual com o nome real do local onde o jogador esta agora
+- SEMPRE inclua o bloco ao final de cada resposta
+
+Regras para o campo locaisVisitados:
+- Para cada local visitado, adicione uma entrada. Exemplo de formato:
+  "West of House": {"saidas": {"north": "nao explorado", "east": "nao explorado"}, "notas": ["mailbox aqui"]}
+- saidas: mapeie direcoes para o nome do destino (se ja visitado) ou "nao explorado"
+- notas: itens no chao, portas trancadas, estados importantes do local
+- NUNCA remova locais ja registrados no status atual — apenas adicione ou atualize`;
+
 }
 
 /**
@@ -194,6 +202,12 @@ function parseAIResponse(fullText: string, fallbackStatus: GameStatus): AIRespon
 					updatedGameStatus = {
 						...fallbackStatus,
 						...parsed,
+						// Merge locaisVisitados additively — never erase existing location data
+						// even if the model returns an empty {} or partial object
+						locaisVisitados: {
+							...fallbackStatus.locaisVisitados,
+							...(parsed.locaisVisitados || {})
+						},
 						ultimaAtualizacao: new Date().toISOString()
 					};
 					message = fullText.replace(regex, '').trim();

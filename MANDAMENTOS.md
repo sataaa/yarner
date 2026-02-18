@@ -233,6 +233,6 @@ yarner/
 
 ---
 
-**Última atualização:** 2026-02-12
-**Versão:** 1.1
-**Status:** Épico 1 ✅ Completo — Épico 2 ✅ Completo — Épico 3 pendente
+**Última atualização:** 2026-02-18
+**Versão:** 1.2
+**Status:** Épico 1 ✅ Completo — Épico 2 ✅ Completo — Épico 3 ✅ Completo — Épico 4 pendente
