@@ -5,7 +5,9 @@
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
+	import LocationMap from '$lib/components/LocationMap.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
+	import { locationMapExpanded } from '$lib/stores/aiChat';
 
 	let errorMessage = '';
 
@@ -48,6 +50,12 @@
 			<div class="panel ai-panel">
 				<AIAssistant />
 			</div>
+
+			{#if $locationMapExpanded}
+				<div class="panel map-panel">
+					<LocationMap expanded={true} />
+				</div>
+			{/if}
 		</div>
 	{/if}
 </main>
@@ -126,6 +134,13 @@
 
 	.ai-panel {
 		background: #1a1a1a;
+		overflow: hidden;
+	}
+
+	.map-panel {
+		background: #1e1e1e;
+		border-left: 2px solid #3a3a3a;
+		flex: 0 0 320px;
 		overflow: hidden;
 	}
 

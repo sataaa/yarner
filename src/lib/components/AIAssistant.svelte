@@ -13,13 +13,27 @@
 		aiIsStreaming,
 		aiStreamingContent,
 		aiError,
-		aiChat
+		aiChat,
+		locationMapExpanded
 	} from '$lib/stores/aiChat';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
+	import LocationMap from './LocationMap.svelte';
 
 	let messageInput = '';
 	let messagesContainer: HTMLDivElement;
 	let showGameStatus = false;
+	let showLocationMap = false;
+
+	// When the map is expanded to third column, close the inline view
+	$: if ($locationMapExpanded) showLocationMap = false;
+
+	function toggleLocationMap() {
+		showLocationMap = !showLocationMap;
+		// If closing while expanded, also collapse the third column
+		if (!showLocationMap && $locationMapExpanded) {
+			locationMapExpanded.set(false);
+		}
+	}
 
 	// Initialize AI chat on mount
 	onMount(() => {
@@ -77,6 +91,14 @@
 				title="Status do jogo"
 			>
 				📋
+			</button>
+			<button
+				class="btn-icon"
+				class:active={showLocationMap || $locationMapExpanded}
+				on:click={toggleLocationMap}
+				title="Mapa de locais"
+			>
+				🗺️
 			</button>
 			<button
 				class="btn-icon"
@@ -140,6 +162,13 @@
 					</ul>
 				</div>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Location Map Panel (inline, hidden when expanded to third column) -->
+	{#if showLocationMap && !$locationMapExpanded}
+		<div class="location-map-panel">
+			<LocationMap expanded={false} />
 		</div>
 	{/if}
 
@@ -289,6 +318,15 @@
 
 	.status-section li {
 		margin-bottom: 0.15rem;
+	}
+
+	/* ---- Location Map Panel (inline) ---- */
+	.location-map-panel {
+		border-bottom: 1px solid #3a3a3a;
+		max-height: 280px;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	/* ---- Messages Area ---- */
