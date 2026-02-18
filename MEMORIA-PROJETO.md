@@ -331,6 +331,59 @@ yarner/
 
 ---
 
+### Sessão 5: 2026-02-18 (Party Mode - Épico 3: Mapa de Locais)
+
+**Participantes:** bmad-master + Godoy
+
+**Objetivo:** Implementar o mapa de locais visitados (Épico 3).
+
+**Decisões de Design (Godoy):**
+- Nome mais preciso: "Mapa de Locais" ao invés de "Sistema de Tracking"
+- Lista de itens descartada (inventário já aparece no log do jogo via comando `inventory`)
+- Foco: locais visitados + saídas exploradas/não exploradas + notas de estado do local
+- UI: botão 🗺️ abre mapa inline no painel da IA; botão ↗ expande para terceira coluna (320px)
+- **Não duplicar sistema**: `locaisVisitados` é um campo novo no `GameStatus` existente — a IA já atualiza o status, basta expandir o schema
+- Schema de saídas: `"north": "Forest Path"` (se explorado) ou `"north": "nao explorado"`
+
+**Arquitetura Implementada:**
+- Zero sistema paralelo: `locaisVisitados` é campo do `GameStatus` já gerenciado pela IA
+- Merge aditivo no parser: dados de locais nunca são apagados (mesmo que a IA retorne `{}` vazio)
+- Store `locationMapExpanded` (writable) controla terceira coluna sem prop-drilling
+- `LocationMap.svelte` é renderizado em dois contextos: inline (dentro de AIAssistant) e terceira coluna (+page.svelte)
+
+**Arquivos Criados:**
+- `src/lib/components/LocationMap.svelte` — lista de locais com saídas coloridas e notas
+
+**Arquivos Modificados:**
+- `src/lib/stores/aiPersistence.ts` — tipo `LocalVisitado` + campo `locaisVisitados` no `GameStatus`
+- `src/lib/api/claude.ts` — system prompt atualizado com instrução de `locaisVisitados`; merge aditivo no parser
+- `src/lib/stores/aiChat.ts` — store `locationMapExpanded` exportada
+- `src/lib/components/AIAssistant.svelte` — botão 🗺️ + mapa inline
+- `src/routes/+page.svelte` — terceira coluna condicional quando `locationMapExpanded`
+
+**Bugs Encontrados e Corrigidos (durante testes):**
+1. **Modelo 8B vaza status na resposta visível** — escrevia "O status do jogo agora é:" antes do bloco JSON. Corrigido adicionando instrução explícita no prompt: "NAO escreva introducao antes do bloco"
+2. **`locaisVisitados` sobrescrito com `{}`** — o spread `...parsed` apagava dados existentes quando o modelo retornava objeto vazio. Corrigido com merge aditivo: `{ ...fallbackStatus.locaisVisitados, ...(parsed.locaisVisitados || {}) }`
+3. **Template JSON complexo demais para 8B** — exemplo de `locaisVisitados` aninhado dentro do template de uma linha confundia o modelo. Simplificado: template principal mostra `"locaisVisitados":{}`, instrução de formato fica em texto separado
+
+**Limitação Conhecida:**
+- Modelos pequenos (8B, como LM Studio com llama-3.1-8b) têm dificuldade em gerar o JSON do game status corretamente e de forma consistente — às vezes omitem campos, usam valores vazios, ou não seguem o formato de `locaisVisitados`. O sistema funciona mas o preenchimento do mapa depende da qualidade do modelo. Modelos maiores (70B+, Claude, GPT-4) funcionam muito melhor.
+
+**Funcionalidades Implementadas:**
+- ✅ Campo `locaisVisitados` no GameStatus (persistido em IndexedDB)
+- ✅ IA instruda a rastrear locais, saídas e notas por local
+- ✅ `LocationMap.svelte` — lista de locais com saídas (verde = explorado, cinza = não explorado)
+- ✅ Local atual marcado com ▶ laranja
+- ✅ Notas de estado por local (itens no chão, portas, etc.)
+- ✅ Botão 🗺️ no painel da IA (inline, colapsável)
+- ✅ Botão ↗/↙ para expandir/recolher terceira coluna
+- ✅ Merge aditivo: dados de locais nunca são perdidos entre interações
+
+**Resultado:**
+- **Épico 3: ✅ COMPLETO** — mapa de locais implementado e testado com Zork I + LM Studio
+
+---
+
 ### Sessão 4: 2026-02-16 (Party Mode - Épico 2: Assistente IA)
 
 **Participantes:** bmad-master + Godoy
@@ -418,12 +471,20 @@ yarner/
 9. ✅ Botão limpar chat com preservação de game status (🗑️)
 10. ✅ Testar com LM Studio + Zork I
 
-### 📋 Épico 3: Sistema de Tracking com IndexedDB
-1. ⬜ Configurar IndexedDB com idb library
-2. ⬜ Tracking de itens coletados
-3. ⬜ Tracking de locais visitados
-4. ⬜ Histórico de comandos persistente
-5. ⬜ Save/load de progresso
+### ✅ COMPLETADO - Épico 3: Mapa de Locais
+1. ✅ Tipo `LocalVisitado` e campo `locaisVisitados` no `GameStatus`
+2. ✅ System prompt atualizado com instrução de rastreamento de locais
+3. ✅ Merge aditivo no parser (dados nunca apagados)
+4. ✅ `LocationMap.svelte` com saídas coloridas e notas
+5. ✅ Botão 🗺️ inline no painel da IA
+6. ✅ Expansão para terceira coluna (store `locationMapExpanded`)
+
+### 📋 Épico 4: Próximas Melhorias (a definir com Godoy)
+1. ⬜ Save/load de progresso do jogo
+2. ⬜ UI/UX polish e responsividade
+3. ⬜ Sugestões proativas da IA (modo ativo)
+4. ⬜ Testes com outros jogos além de Zork I
+5. ⬜ Deploy inicial (Vercel/Netlify)
 
 ### 🚀 Médio Prazo
 1. ⬜ Sistema de tracking inteligente (IA analisa progresso)
@@ -469,9 +530,9 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ## 📊 STATUS ATUAL DO PROJETO
 
-**Versão:** 0.3.0-alpha
-**Última Sessão:** 2026-02-16 (Sessão 4)
-**Épico Atual:** Épico 2 ✅ COMPLETO — Iniciando Épico 3
+**Versão:** 0.4.0-alpha
+**Última Sessão:** 2026-02-18 (Sessão 5)
+**Épico Atual:** Épico 3 ✅ COMPLETO — Iniciando Épico 4
 
 **Funcionalidades Completas e Testadas:**
 - ✅ Upload e carregamento de jogos z-machine (.z3, .z4, .z5, .z8)
@@ -485,9 +546,11 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 - ✅ Game status estruturado mantido pela IA (localização, inventário, objetivos)
 - ✅ Persistência em IndexedDB (chat + game status por jogo)
 - ✅ Botão limpar chat preservando game status como memória
+- ✅ Mapa de locais visitados com saídas exploradas/não exploradas e notas
+- ✅ Botão 🗺️ inline + expansão para terceira coluna
 
 **Pendente:**
-- ⬜ Sistema de Tracking (Épico 3) — **PRÓXIMO**
+- ⬜ Save/load de progresso do jogo (Épico 4)
 - ⬜ Deploy em produção
 
 **Repositório GitHub:** https://github.com/sataaa/yarner
@@ -495,5 +558,5 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ---
 
-**Última atualização:** 2026-02-16 (Sessão 4 - Épico 2 Completo e Testado)
-**Próxima revisão:** Durante implementação do Épico 3
+**Última atualização:** 2026-02-18 (Sessão 5 - Épico 3 Completo e Testado)
+**Próxima revisão:** Durante implementação do Épico 4

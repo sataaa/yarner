@@ -245,6 +245,9 @@ export async function clearChatMessages(): Promise<void> {
 
 // ---- Derived Stores ----
 
+/** Controls whether the location map is expanded to a third column */
+export const locationMapExpanded = writable(false);
+
 export const aiMessages = derived(aiChatStore, ($s) => $s.messages);
 export const aiGameStatus = derived(aiChatStore, ($s) => $s.gameStatus);
 export const aiIsLoading = derived(aiChatStore, ($s) => $s.isLoading);
