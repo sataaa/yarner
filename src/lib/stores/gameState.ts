@@ -7,6 +7,13 @@
 
 import { writable, derived, get } from 'svelte/store';
 import { createGameEngine, type GameEngine } from '$lib/zmachine/zvm-wrapper';
+import {
+	getSaveSlots,
+	writeSaveSlot,
+	deleteSaveSlot,
+	type SaveSlot,
+	type GameSaveSlots
+} from '$lib/stores/aiPersistence';
 
 export interface GameState {
 	isLoaded: boolean;
@@ -14,7 +21,11 @@ export interface GameState {
 	gameHistory: string[];
 	commandHistory: string[];
 	engine: GameEngine | null;
+	/** Original game file — needed to restore from a save slot */
+	gameData: ArrayBuffer | null;
 }
+
+export type { SaveSlot, GameSaveSlots };
 
 // Initial state
 const initialState: GameState = {
@@ -22,7 +33,8 @@ const initialState: GameState = {
 	gameName: '',
 	gameHistory: [],
 	commandHistory: [],
-	engine: null
+	engine: null,
+	gameData: null
 };
 
 // Create the writable store
@@ -56,11 +68,12 @@ export async function loadGame(filename: string, gameData: ArrayBuffer): Promise
 		// Load the game (VM runs synchronously until first input request)
 		await engine.loadGame(gameData);
 
-		// Update state to loaded
+		// Update state to loaded (keep gameData for future save/restore)
 		gameStateStore.update(state => ({
 			...state,
 			isLoaded: true,
-			engine
+			engine,
+			gameData
 		}));
 	} catch (error) {
 		console.error('Failed to load game:', error);
@@ -131,6 +144,98 @@ export function restartGame(): void {
 }
 
 /**
+ * Save the current game state to a named slot in IndexedDB.
+ * Takes a full VM snapshot via GameEngine.saveSnapshot() and persists it
+ * alongside the current game output and the original game file.
+ */
+export async function saveGame(slotName: string): Promise<void> {
+	const state = get(gameStateStore);
+
+	if (!state.isLoaded || !state.engine || !state.gameData) {
+		throw new Error('Nenhum jogo carregado');
+	}
+
+	const snapshot = state.engine.saveSnapshot();
+	if (!snapshot) {
+		throw new Error('Falha ao criar snapshot do jogo');
+	}
+
+	const slot: SaveSlot = {
+		slotName,
+		gameName: state.gameName,
+		timestamp: new Date().toISOString(),
+		snapshot,
+		gameHistory: [...state.gameHistory],
+		gameData: state.gameData
+	};
+
+	await writeSaveSlot(state.gameName, slot);
+}
+
+/**
+ * Restore the game from a save slot.
+ * Creates a fresh VM using the slot's stored game file, restores the
+ * snapshot, and replaces the current game history with the saved one.
+ */
+export async function loadFromSaveSlot(slot: SaveSlot): Promise<void> {
+	const state = get(gameStateStore);
+
+	// Destroy existing engine if any
+	if (state.engine) {
+		state.engine.destroy();
+	}
+
+	const engine = createGameEngine();
+	const gameName = slot.gameName;
+
+	// Register output callback before restore so intro/restore output is captured
+	engine.onOutput((text: string) => {
+		gameStateStore.update(s => ({
+			...s,
+			gameHistory: [...s.gameHistory, text]
+		}));
+	});
+
+	// Restore game history first (so the callback appends after it)
+	gameStateStore.update(s => ({
+		...s,
+		isLoaded: false,
+		gameName,
+		gameHistory: [...slot.gameHistory, `\n[Jogo restaurado: "${slot.slotName}"]\n`],
+		commandHistory: [],
+		engine: null,
+		gameData: slot.gameData
+	}));
+
+	// Restore the VM from the snapshot
+	await engine.restoreFromSnapshot(slot.gameData, slot.snapshot);
+
+	gameStateStore.update(s => ({
+		...s,
+		isLoaded: true,
+		engine
+	}));
+}
+
+/**
+ * Return all save slots for the currently loaded game.
+ */
+export async function getSaveSlotList(): Promise<GameSaveSlots> {
+	const state = get(gameStateStore);
+	if (!state.gameName) return {};
+	return getSaveSlots(state.gameName);
+}
+
+/**
+ * Delete a save slot for the currently loaded game.
+ */
+export async function removeSaveSlot(slotName: string): Promise<void> {
+	const state = get(gameStateStore);
+	if (!state.gameName) return;
+	await deleteSaveSlot(state.gameName, slotName);
+}
+
+/**
  * Unload the current game and reset state
  */
 export function unloadGame(): void {
@@ -177,5 +282,9 @@ export const gameState = {
 	addOutput,
 	clearHistory,
 	restartGame,
-	unloadGame
+	unloadGame,
+	saveGame,
+	loadFromSaveSlot,
+	getSaveSlotList,
+	removeSaveSlot
 };
