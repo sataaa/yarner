@@ -6,7 +6,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { createGameEngine, type GameEngine } from '$lib/zmachine/zvm-wrapper';
+import { createGameEngine, type GameEngine } from '$lib/zmachine';
 import {
 	getSaveSlots,
 	writeSaveSlot,
