@@ -127,28 +127,60 @@ export function clearHistory(): void {
 }
 
 /**
- * Restart the current game
+ * Restart the current game.
+ *
+ * Recarrega o jogo do gameData armazenado em vez de usar vm.restart(),
+ * pois vm.restart() não passa pelo mesmo ciclo de execução de vm.init()
+ * e o output inicial fica retido no buffer sem ser entregue ao callback.
  */
-export function restartGame(): void {
+export async function restartGame(): Promise<void> {
 	const state = get(gameStateStore);
 
-	if (state.engine) {
-		state.engine.restart();
+	if (!state.engine || !state.gameData) return;
 
+	// Destrói a engine atual
+	state.engine.destroy();
+
+	const engine = createGameEngine();
+	const { gameName, gameData } = state;
+
+	// Limpa o histórico e marca como não carregado antes de iniciar
+	gameStateStore.update(s => ({
+		...s,
+		isLoaded: false,
+		gameHistory: [],
+		commandHistory: [],
+		engine: null
+	}));
+
+	// Registra callback ANTES de loadGame — o VM produz output durante init()
+	engine.onOutput((text: string) => {
 		gameStateStore.update(s => ({
 			...s,
-			gameHistory: [],
-			commandHistory: []
+			gameHistory: [...s.gameHistory, text]
 		}));
-	}
+	});
+
+	await engine.loadGame(gameData);
+
+	gameStateStore.update(s => ({
+		...s,
+		isLoaded: true,
+		engine,
+		gameName,
+		gameData
+	}));
 }
 
 /**
  * Save the current game state to a named slot in IndexedDB.
  * Takes a full VM snapshot via GameEngine.saveSnapshot() and persists it
- * alongside the current game output and the original game file.
+ * alongside the current game output, the original game file, and the AI status.
+ *
+ * @param slotName - Name for the save slot
+ * @param aiGameStatus - Current AI game status (location, inventory, map, etc.)
  */
-export async function saveGame(slotName: string): Promise<void> {
+export async function saveGame(slotName: string, aiGameStatus?: import('./aiPersistence').GameStatus): Promise<void> {
 	const state = get(gameStateStore);
 
 	if (!state.isLoaded || !state.engine || !state.gameData) {
@@ -166,7 +198,8 @@ export async function saveGame(slotName: string): Promise<void> {
 		timestamp: new Date().toISOString(),
 		snapshot,
 		gameHistory: [...state.gameHistory],
-		gameData: state.gameData
+		gameData: state.gameData,
+		aiGameStatus
 	};
 
 	await writeSaveSlot(state.gameName, slot);
