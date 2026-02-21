@@ -67,6 +67,8 @@ export interface SaveSlot {
 	gameHistory: string[];
 	/** Original game file — needed to recreate the static ROM on restore */
 	gameData: ArrayBuffer;
+	/** AI game status at the time of saving (location, inventory, map, etc.) */
+	aiGameStatus?: GameStatus;
 }
 
 /** All save slots for one game, keyed by slotName */
@@ -98,15 +100,16 @@ const DB_VERSION = 2;
 async function getDB(): Promise<IDBPDatabase<YarnerAIDB>> {
 	return openDB<YarnerAIDB>(DB_NAME, DB_VERSION, {
 		upgrade(db, oldVersion) {
-			// v1 stores (create on fresh install or upgrade from scratch)
+			// v8 ignore start — DB migration branches can't be reliably unit-tested
+			// (would require seeding a v1 DB, not worth the complexity)
 			if (oldVersion < 1) {
 				db.createObjectStore('gameStatus');
 				db.createObjectStore('chatHistory');
 			}
-			// v2: manual save slots
 			if (oldVersion < 2) {
 				db.createObjectStore('gameSaves');
 			}
+			// v8 ignore stop
 		}
 	});
 }

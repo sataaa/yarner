@@ -146,6 +146,13 @@ describe('writeSaveSlot / getSaveSlots', () => {
 // ---------------------------------------------------------------------------
 
 describe('deleteSaveSlot', () => {
+	it('is a no-op for a slot that does not exist (covers ?? {} fallback)', async () => {
+		// game-never-saved has no entry in gameSaves — db.get() returns undefined → ?? {}
+		await expect(deleteSaveSlot('game-never-saved', 'ghost-slot')).resolves.toBeUndefined();
+		const slots = await getSaveSlots('game-never-saved');
+		expect(Object.keys(slots)).toHaveLength(0);
+	});
+
 	it('removes the specified slot', async () => {
 		await writeSaveSlot('delete-game-1', makeSlot('to-delete', 'delete-game-1'));
 		await writeSaveSlot('delete-game-1', makeSlot('keep-me', 'delete-game-1'));

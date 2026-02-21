@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1771639668350" clover="3.2.0">
+  <project timestamp="1771639668350" name="All files">
+    <metrics statements="164" coveredstatements="164" conditionals="91" coveredconditionals="90" methods="46" coveredmethods="46" elements="301" coveredelements="300" complexity="0" loc="164" ncloc="164" packages="2" files="3" classes="3"/>
+    <package name="api">
+      <metrics statements="73" coveredstatements="73" conditionals="58" coveredconditionals="57" methods="6" coveredmethods="6"/>
+      <file name="claude.ts" path="/home/sata/dev/yarner/src/lib/api/claude.ts">
+        <metrics statements="73" coveredstatements="73" conditionals="58" coveredconditionals="57" methods="6" coveredmethods="6"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="52" count="9" type="stmt"/>
+        <line num="55" count="9" type="stmt"/>
+        <line num="61" count="9" type="stmt"/>
+        <line num="69" count="9" type="stmt"/>
+        <line num="80" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="81" count="2" type="stmt"/>
+        <line num="82" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="85" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="86" count="1" type="stmt"/>
+        <line num="90" count="6" type="stmt"/>
+        <line num="91" count="6" type="stmt"/>
+        <line num="92" count="6" type="stmt"/>
+        <line num="94" count="6" type="stmt"/>
+        <line num="95" count="6" type="stmt"/>
+        <line num="96" count="22" type="stmt"/>
+        <line num="97" count="22" type="cond" truecount="2" falsecount="0"/>
+        <line num="99" count="16" type="stmt"/>
+        <line num="100" count="16" type="stmt"/>
+        <line num="102" count="16" type="stmt"/>
+        <line num="103" count="48" type="stmt"/>
+        <line num="104" count="48" type="cond" truecount="4" falsecount="0"/>
+        <line num="106" count="16" type="stmt"/>
+        <line num="107" count="16" type="cond" truecount="2" falsecount="0"/>
+        <line num="109" count="10" type="stmt"/>
+        <line num="110" count="10" type="stmt"/>
+        <line num="111" count="10" type="stmt"/>
+        <line num="112" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="113" count="9" type="stmt"/>
+        <line num="114" count="9" type="stmt"/>
+        <line num="122" count="6" type="stmt"/>
+        <line num="125" count="6" type="stmt"/>
+        <line num="141" count="9" type="stmt"/>
+        <line num="191" count="16" type="stmt"/>
+        <line num="198" count="16" type="stmt"/>
+        <line num="199" count="16" type="stmt"/>
+        <line num="201" count="16" type="stmt"/>
+        <line num="202" count="35" type="stmt"/>
+        <line num="203" count="35" type="cond" truecount="2" falsecount="0"/>
+        <line num="205" count="10" type="stmt"/>
+        <line num="207" count="10" type="stmt"/>
+        <line num="208" count="10" type="cond" truecount="5" falsecount="0"/>
+        <line num="209" count="8" type="stmt"/>
+        <line num="220" count="10" type="stmt"/>
+        <line num="224" count="16" type="stmt"/>
+        <line num="234" count="18" type="stmt"/>
+        <line num="237" count="7" type="stmt"/>
+        <line num="238" count="7" type="stmt"/>
+        <line num="239" count="7" type="stmt"/>
+        <line num="240" count="172" type="cond" truecount="2" falsecount="0"/>
+        <line num="241" count="171" type="cond" truecount="4" falsecount="0"/>
+        <line num="242" count="170" type="cond" truecount="2" falsecount="0"/>
+        <line num="243" count="150" type="cond" truecount="2" falsecount="0"/>
+        <line num="245" count="70" type="cond" truecount="3" falsecount="1"/>
+        <line num="246" count="64" type="cond" truecount="2" falsecount="0"/>
+        <line num="247" count="62" type="cond" truecount="2" falsecount="0"/>
+        <line num="248" count="1" type="stmt"/>
+        <line num="251" count="7" type="stmt"/>
+        <line num="252" count="7" type="stmt"/>
+        <line num="253" count="7" type="stmt"/>
+        <line num="254" count="7" type="stmt"/>
+        <line num="255" count="7" type="stmt"/>
+        <line num="258" count="4" type="stmt"/>
+        <line num="259" count="4" type="stmt"/>
+        <line num="266" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="267" count="1" type="stmt"/>
+        <line num="269" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="270" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="271" count="1" type="stmt"/>
+        <line num="273" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="274" count="1" type="stmt"/>
+        <line num="276" count="1" type="stmt"/>
+        <line num="278" count="2" type="stmt"/>
+      </file>
+    </package>
+    <package name="stores">
+      <metrics statements="91" coveredstatements="91" conditionals="33" coveredconditionals="33" methods="40" coveredmethods="40"/>
+      <file name="aiPersistence.ts" path="/home/sata/dev/yarner/src/lib/stores/aiPersistence.ts">
+        <metrics statements="27" coveredstatements="27" conditionals="10" coveredconditionals="10" methods="11" coveredmethods="11"/>
+        <line num="95" count="1" type="stmt"/>
+        <line num="97" count="1" type="stmt"/>
+        <line num="101" count="32" type="stmt"/>
+        <line num="120" count="4" type="stmt"/>
+        <line num="121" count="4" type="stmt"/>
+        <line num="125" count="4" type="stmt"/>
+        <line num="126" count="4" type="stmt"/>
+        <line num="132" count="2" type="stmt"/>
+        <line num="133" count="2" type="stmt"/>
+        <line num="137" count="3" type="stmt"/>
+        <line num="138" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="145" count="7" type="stmt"/>
+        <line num="146" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="151" count="8" type="stmt"/>
+        <line num="152" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="153" count="8" type="stmt"/>
+        <line num="154" count="8" type="stmt"/>
+        <line num="159" count="3" type="stmt"/>
+        <line num="160" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="161" count="3" type="stmt"/>
+        <line num="162" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="163" count="2" type="stmt"/>
+        <line num="165" count="1" type="stmt"/>
+        <line num="173" count="1" type="stmt"/>
+        <line num="174" count="1" type="stmt"/>
+        <line num="175" count="1" type="stmt"/>
+        <line num="182" count="2" type="stmt"/>
+      </file>
+      <file name="gameState.ts" path="/home/sata/dev/yarner/src/lib/stores/gameState.ts">
+        <metrics statements="64" coveredstatements="64" conditionals="23" coveredconditionals="23" methods="29" coveredmethods="29"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="41" count="1" type="stmt"/>
+        <line num="47" count="19" type="stmt"/>
+        <line num="49" count="19" type="stmt"/>
+        <line num="52" count="19" type="stmt"/>
+        <line num="61" count="19" type="stmt"/>
+        <line num="62" count="1" type="stmt"/>
+        <line num="69" count="19" type="stmt"/>
+        <line num="72" count="18" type="stmt"/>
+        <line num="79" count="1" type="stmt"/>
+        <line num="80" count="1" type="stmt"/>
+        <line num="85" count="1" type="stmt"/>
+        <line num="93" count="3" type="stmt"/>
+        <line num="95" count="3" type="cond" truecount="4" falsecount="0"/>
+        <line num="96" count="1" type="stmt"/>
+        <line num="100" count="2" type="stmt"/>
+        <line num="106" count="2" type="stmt"/>
+        <line num="113" count="6" type="stmt"/>
+        <line num="123" count="2" type="stmt"/>
+        <line num="137" count="5" type="stmt"/>
+        <line num="139" count="5" type="cond" truecount="4" falsecount="0"/>
+        <line num="142" count="4" type="stmt"/>
+        <line num="144" count="4" type="stmt"/>
+        <line num="145" count="4" type="stmt"/>
+        <line num="148" count="4" type="stmt"/>
+        <line num="157" count="4" type="stmt"/>
+        <line num="158" count="1" type="stmt"/>
+        <line num="164" count="4" type="stmt"/>
+        <line num="166" count="4" type="stmt"/>
+        <line num="184" count="4" type="stmt"/>
+        <line num="186" count="4" type="cond" truecount="5" falsecount="0"/>
+        <line num="187" count="1" type="stmt"/>
+        <line num="190" count="3" type="stmt"/>
+        <line num="191" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="192" count="1" type="stmt"/>
+        <line num="195" count="2" type="stmt"/>
+        <line num="205" count="2" type="stmt"/>
+        <line num="214" count="5" type="stmt"/>
+        <line num="217" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="218" count="1" type="stmt"/>
+        <line num="221" count="5" type="stmt"/>
+        <line num="222" count="5" type="stmt"/>
+        <line num="225" count="5" type="stmt"/>
+        <line num="226" count="1" type="stmt"/>
+        <line num="233" count="5" type="stmt"/>
+        <line num="244" count="5" type="stmt"/>
+        <line num="246" count="5" type="stmt"/>
+        <line num="257" count="2" type="stmt"/>
+        <line num="258" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="259" count="1" type="stmt"/>
+        <line num="266" count="2" type="stmt"/>
+        <line num="267" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="268" count="1" type="stmt"/>
+        <line num="275" count="40" type="stmt"/>
+        <line num="277" count="40" type="cond" truecount="2" falsecount="0"/>
+        <line num="278" count="21" type="stmt"/>
+        <line num="281" count="40" type="stmt"/>
+        <line num="287" count="1" type="stmt"/>
+        <line num="289" count="6" type="stmt"/>
+        <line num="295" count="1" type="stmt"/>
+        <line num="297" count="4" type="stmt"/>
+        <line num="303" count="1" type="stmt"/>
+        <line num="305" count="1" type="stmt"/>
+        <line num="311" count="1" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

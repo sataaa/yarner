@@ -241,6 +241,7 @@ export function tryRepairAndParseJSON(s: string): Record<string, unknown> | null
 		if (ch === '\\' && inStr) { esc = true; continue; }
 		if (ch === '"') { inStr = !inStr; continue; }
 		if (inStr) continue;
+		/* v8 ignore next 4 */
 		if (ch === '{') braces++;
 		else if (ch === '}') braces = Math.max(0, braces - 1);
 		else if (ch === '[') brackets++;

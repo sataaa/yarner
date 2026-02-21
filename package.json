@@ -16,6 +16,7 @@
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "fake-indexeddb": "^6.2.5",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
