@@ -4,7 +4,7 @@ import { get } from 'svelte/store';
 // Mock the z-machine engine — ifvms.js relies on browser APIs unavailable in Node.
 // The factory returns a fresh mock object on every createGameEngine() call,
 // so each loadGame() call gets its own isolated mock engine instance.
-vi.mock('$lib/zmachine/zvm-wrapper', () => ({
+vi.mock('$lib/zmachine', () => ({
 	createGameEngine: vi.fn(() => ({
 		onOutput: vi.fn(),
 		loadGame: vi.fn().mockResolvedValue(undefined),
@@ -22,7 +22,7 @@ vi.mock('$lib/stores/aiPersistence', () => ({
 	deleteSaveSlot: vi.fn().mockResolvedValue(undefined)
 }));
 
-import { createGameEngine } from '$lib/zmachine/zvm-wrapper';
+import { createGameEngine } from '$lib/zmachine';
 import { writeSaveSlot, deleteSaveSlot, getSaveSlots } from '$lib/stores/aiPersistence';
 import {
 	gameState,
