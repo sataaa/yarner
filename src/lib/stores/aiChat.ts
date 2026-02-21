@@ -58,6 +58,19 @@ const initialState: AIChatState = {
 
 const aiChatStore = writable<AIChatState>(initialState);
 
+// AbortController for the current streaming request.
+// Kept outside the store (not serializable) — module-level is fine since
+// there is only ever one active stream at a time.
+let currentAbortController: AbortController | null = null;
+
+/** Cancel any in-progress AI streaming request. Safe to call when idle. */
+export function abortStreaming(): void {
+	if (currentAbortController) {
+		currentAbortController.abort();
+		currentAbortController = null;
+	}
+}
+
 // ---- API Key Management ----
 
 /** Initialize the store — load API key from localStorage */
@@ -118,6 +131,11 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 	const state = get(aiChatStore);
 	const gameS = get(gameState);
 
+	// Cancel any previous request before starting a new one
+	abortStreaming();
+	currentAbortController = new AbortController();
+	const { signal } = currentAbortController;
+
 	// API key is optional for local servers (LM Studio, Ollama)
 
 	// Add user message
@@ -158,7 +176,9 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 			(partialText) => {
 				// Update streaming content for live display
 				aiChatStore.update((s) => ({ ...s, streamingContent: partialText }));
-			}
+			},
+			undefined,
+			signal
 		);
 
 		// Add assistant response to messages
@@ -185,6 +205,16 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 			await saveChatHistory(gameS.gameName, finalState.messages);
 		}
 	} catch (error) {
+		// AbortError is intentional (new game loaded, reset, etc.) — clean up silently
+		if (error instanceof DOMException && error.name === 'AbortError') {
+			aiChatStore.update((s) => ({
+				...s,
+				isLoading: false,
+				isStreaming: false,
+				streamingContent: ''
+			}));
+			return;
+		}
 		aiChatStore.update((s) => ({
 			...s,
 			isLoading: false,
@@ -192,6 +222,8 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 			streamingContent: '',
 			error: getErrorMessage(error)
 		}));
+	} finally {
+		currentAbortController = null;
 	}
 }
 
@@ -199,6 +231,8 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 
 /** Load persisted AI state for a specific game (called when game loads) */
 export async function loadAIStateForGame(gameName: string): Promise<void> {
+	// If a stream is active (e.g. user loaded a new game mid-response), kill it first
+	abortStreaming();
 	const savedStatus = await loadGameStatus(gameName);
 	const savedMessages = await loadChatHistory(gameName);
 
@@ -213,11 +247,66 @@ export async function loadAIStateForGame(gameName: string): Promise<void> {
 
 /** Reset AI chat state (when game changes or is unloaded) */
 export function resetAIChat(): void {
+	abortStreaming();
 	const currentKey = get(aiChatStore).apiKey;
 	aiChatStore.set({
 		...initialState,
 		apiKey: currentKey // Preserve the API key across game changes
 	});
+}
+
+/**
+ * Restaura o status de IA a partir de um slot de save.
+ * Chamado após loadFromSaveSlot() para sincronizar o assistente com o estado salvo.
+ *
+ * @param savedStatus - GameStatus armazenado no slot (pode ser undefined para saves antigos)
+ * @param gameHistoryLength - Tamanho do gameHistory restaurado (atualiza o smart diff index)
+ */
+export async function restoreAIStatusFromSave(
+	savedStatus: import('./aiPersistence').GameStatus | undefined,
+	gameHistoryLength: number
+): Promise<void> {
+	const gameS = get(gameState);
+	const statusToRestore = savedStatus ?? createEmptyGameStatus();
+
+	aiChatStore.update(s => ({
+		...s,
+		gameStatus: statusToRestore,
+		// Aponta o smart diff para o fim do histórico restaurado
+		// para que a IA não reenvie tudo o que já foi processado
+		lastSentGameHistoryIndex: gameHistoryLength,
+		error: ''
+	}));
+
+	if (gameS.gameName) {
+		await saveGameStatus(gameS.gameName, statusToRestore);
+	}
+}
+
+/**
+ * Reseta o estado de IA para um restart de jogo:
+ * - Zera o game status (localização, inventário, etc.)
+ * - Limpa mensagens do chat (não são mais relevantes para o estado reiniciado)
+ * - Persiste o estado zerado no IndexedDB
+ *
+ * Chamado por GamePanel quando o usuário confirma o restart.
+ */
+export async function resetAIStateForRestart(): Promise<void> {
+	const gameS = get(gameState);
+	const emptyStatus = createEmptyGameStatus();
+
+	aiChatStore.update(s => ({
+		...s,
+		messages: [],
+		gameStatus: emptyStatus,
+		lastSentGameHistoryIndex: 0,
+		error: ''
+	}));
+
+	if (gameS.gameName) {
+		await saveGameStatus(gameS.gameName, emptyStatus);
+		await saveChatHistory(gameS.gameName, []);
+	}
 }
 
 /**
@@ -265,5 +354,7 @@ export const aiChat = {
 	sendMessageToAI,
 	loadAIStateForGame,
 	resetAIChat,
+	resetAIStateForRestart,
+	restoreAIStatusFromSave,
 	clearChatMessages
 };

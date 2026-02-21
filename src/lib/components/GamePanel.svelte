@@ -7,8 +7,10 @@
 	 * Does NOT register its own onOutput callback — the store handles that.
 	 */
 	import { onMount, onDestroy } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
+	import { aiChat, aiGameStatus } from '$lib/stores/aiChat';
 
 	export let gameName: string = '';
 
@@ -23,12 +25,17 @@
 	let showLoadPanel = false;
 	let saveSlotName = '';
 	let saveSlots: GameSaveSlots = {};
-	let saveMessage = '';   // feedback shown briefly after save/load
+	let saveMessage = '';
 	let isSaving = false;
 	let isLoadingSlot = false;
 	let slotNameInput: HTMLInputElement;
 
-	// Subscribe to the store's gameHistory — the single source of truth for output
+	// ---- Confirmações inline (sem confirm() nativo) ----
+	let showRestartConfirm = false;
+	let pendingLoadSlot: SaveSlot | null = null;
+	let deletingSlotName: string | null = null;
+
+	// Subscribe to the store's gameHistory — single source of truth for output
 	let gameOutput: string[] = [];
 	const unsubscribe = gameState.subscribe(state => {
 		gameOutput = state.gameHistory;
@@ -42,10 +49,7 @@
 	}
 
 	onMount(() => {
-		// Focus the command input when the panel mounts
-		if (commandInput) {
-			commandInput.focus();
-		}
+		if (commandInput) commandInput.focus();
 	});
 
 	function handleCommand(event: KeyboardEvent) {
@@ -65,21 +69,16 @@
 		const command = currentCommand.trim();
 		if (!command) return;
 
-		// Add player command echo to store history (so it shows in output)
 		gameState.addOutput(`\n> ${command}\n`);
-
-		// Add to local command history for arrow-key navigation
 		commandHistory = [...commandHistory, command];
 		historyIndex = commandHistory.length;
 
-		// Send to game engine via store
 		try {
 			gameState.sendCommand(command);
 		} catch (error) {
-			gameState.addOutput(`\n[Error: ${error}]\n`);
+			gameState.addOutput(`\n[Erro: ${error}]\n`);
 		}
 
-		// Clear input
 		currentCommand = '';
 	}
 
@@ -106,13 +105,21 @@
 		gameState.clearHistory();
 	}
 
-	function restartGame() {
-		if (confirm('Are you sure you want to restart the game? Progress will be lost.')) {
-			commandHistory = [];
-			historyIndex = -1;
-			currentCommand = '';
-			gameState.restartGame();
-		}
+	// Botão de restart — mostra confirmação inline
+	function requestRestart() {
+		showRestartConfirm = true;
+		showSavePanel = false;
+		showLoadPanel = false;
+	}
+
+	async function doRestart() {
+		showRestartConfirm = false;
+		commandHistory = [];
+		historyIndex = -1;
+		currentCommand = '';
+		await gameState.restartGame();
+		// Zera status e chat da IA — não são mais relevantes após o restart
+		aiChat.resetAIStateForRestart();
 	}
 
 	// ---- Save / Load helpers ----
@@ -124,17 +131,19 @@
 
 	async function openLoadPanel() {
 		showSavePanel = false;
+		showRestartConfirm = false;
+		pendingLoadSlot = null;
+		deletingSlotName = null;
 		saveSlots = await gameState.getSaveSlotList();
 		showLoadPanel = true;
 	}
 
 	function openSavePanel() {
 		showLoadPanel = false;
+		showRestartConfirm = false;
 		saveSlotName = '';
 		showSavePanel = true;
-		// Refresh slot list so "overwrite" warning works
 		gameState.getSaveSlotList().then(s => { saveSlots = s; });
-		// Focus input on next tick (after Svelte renders the panel)
 		setTimeout(() => { slotNameInput?.focus(); }, 30);
 	}
 
@@ -143,7 +152,8 @@
 		if (!name) return;
 		isSaving = true;
 		try {
-			await gameState.saveGame(name);
+			// Inclui o status atual da IA no slot para restaurar junto com o jogo
+			await gameState.saveGame(name, $aiGameStatus);
 			showSavePanel = false;
 			saveSlotName = '';
 			showFeedback(`Salvo: "${name}"`);
@@ -154,15 +164,25 @@
 		}
 	}
 
-	async function loadSlot(slot: SaveSlot) {
-		if (!confirm(`Restaurar "${slot.slotName}"? O progresso atual será perdido.`)) return;
+	// Clique em "Carregar" — pede confirmação inline
+	function requestLoadSlot(slot: SaveSlot) {
+		pendingLoadSlot = slot;
+		deletingSlotName = null;
+	}
+
+	async function doLoadSlot() {
+		if (!pendingLoadSlot) return;
+		const slot = pendingLoadSlot;
 		isLoadingSlot = true;
 		showLoadPanel = false;
+		pendingLoadSlot = null;
 		try {
 			await gameState.loadFromSaveSlot(slot);
 			commandHistory = [];
 			historyIndex = -1;
 			currentCommand = '';
+			// Restaura o status da IA salvo no slot (localização, inventário, mapa, etc.)
+			await aiChat.restoreAIStatusFromSave(slot.aiGameStatus, slot.gameHistory.length);
 			showFeedback(`Carregado: "${slot.slotName}"`);
 		} catch (err) {
 			showFeedback(`Erro ao carregar: ${err}`);
@@ -171,9 +191,15 @@
 		}
 	}
 
-	async function deleteSlot(slotName: string) {
-		if (!confirm(`Deletar slot "${slotName}"?`)) return;
+	// Clique em 🗑 — pede confirmação inline
+	function requestDeleteSlot(slotName: string) {
+		deletingSlotName = slotName;
+		pendingLoadSlot = null;
+	}
+
+	async function doDeleteSlot(slotName: string) {
 		await gameState.removeSaveSlot(slotName);
+		deletingSlotName = null;
 		saveSlots = await gameState.getSaveSlotList();
 	}
 
@@ -203,18 +229,30 @@
 			<button class="btn-icon" on:click={clearOutput} title="Limpar output">
 				🗑️
 			</button>
-			<button class="btn-icon" on:click={restartGame} title="Reiniciar jogo">
+			<button class="btn-icon" on:click={requestRestart} title="Reiniciar jogo">
 				🔄
 			</button>
 		</div>
 	</div>
 
 	{#if saveMessage}
-		<div class="save-feedback">{saveMessage}</div>
+		<div class="save-feedback" transition:slide={{ duration: 150 }}>{saveMessage}</div>
 	{/if}
 
+	<!-- Confirmação inline de restart -->
+	{#if showRestartConfirm}
+		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
+			<span>⚠️ Reiniciar o jogo? O progresso atual será perdido.</span>
+			<div class="confirm-actions">
+				<button class="btn-danger" on:click={doRestart}>Reiniciar</button>
+				<button class="btn-cancel-sm" on:click={() => showRestartConfirm = false}>Cancelar</button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Painel de salvar -->
 	{#if showSavePanel}
-		<div class="save-load-panel">
+		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-title">💾 Salvar Jogo</div>
 			<div class="panel-row">
 				<input
@@ -237,30 +275,57 @@
 		</div>
 	{/if}
 
+	<!-- Painel de carregar -->
 	{#if showLoadPanel}
-		<div class="save-load-panel">
+		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-header-row">
 				<div class="panel-title">📂 Carregar Jogo</div>
-				<button class="btn-cancel" on:click={() => { showLoadPanel = false; }}>✕</button>
+				<button class="btn-cancel" on:click={() => { showLoadPanel = false; pendingLoadSlot = null; deletingSlotName = null; }}>✕</button>
 			</div>
+
 			{#if Object.keys(saveSlots).length === 0}
 				<div class="no-slots">Nenhum save encontrado para "{gameName}".</div>
 			{:else}
+				<!-- Confirmação de load inline -->
+				{#if pendingLoadSlot}
+					<div class="confirm-strip-inline" transition:slide={{ duration: 120 }}>
+						<span>Restaurar <strong>"{pendingLoadSlot.slotName}"</strong>? O progresso atual será perdido.</span>
+						<div class="confirm-actions">
+							<button class="btn-confirm" on:click={doLoadSlot} disabled={isLoadingSlot}>Restaurar</button>
+							<button class="btn-cancel-sm" on:click={() => pendingLoadSlot = null}>Cancelar</button>
+						</div>
+					</div>
+				{/if}
+
 				<div class="slot-list">
 					{#each Object.values(saveSlots).sort((a, b) => b.timestamp.localeCompare(a.timestamp)) as slot}
-						<div class="slot-item">
-							<div class="slot-info">
-								<span class="slot-name">{slot.slotName}</span>
-								<span class="slot-date">{formatTimestamp(slot.timestamp)}</span>
-							</div>
-							<div class="slot-actions">
-								<button class="btn-load" on:click={() => loadSlot(slot)} disabled={isLoadingSlot}>
-									Carregar
-								</button>
-								<button class="btn-delete" on:click={() => deleteSlot(slot.slotName)} title="Deletar slot">
-									🗑
-								</button>
-							</div>
+						<div class="slot-item" class:confirming={deletingSlotName === slot.slotName}>
+							{#if deletingSlotName === slot.slotName}
+								<!-- Confirmação de exclusão inline no próprio item -->
+								<span class="delete-confirm-text">Deletar "{slot.slotName}"?</span>
+								<div class="slot-actions">
+									<button class="btn-danger-sm" on:click={() => doDeleteSlot(slot.slotName)}>Deletar</button>
+									<button class="btn-cancel-sm" on:click={() => deletingSlotName = null}>Cancelar</button>
+								</div>
+							{:else}
+								<div class="slot-info">
+									<span class="slot-name">{slot.slotName}</span>
+									<span class="slot-date">{formatTimestamp(slot.timestamp)}</span>
+								</div>
+								<div class="slot-actions">
+									<button
+										class="btn-load"
+										class:selected={pendingLoadSlot?.slotName === slot.slotName}
+										on:click={() => requestLoadSlot(slot)}
+										disabled={isLoadingSlot}
+									>
+										Carregar
+									</button>
+									<button class="btn-delete" on:click={() => requestDeleteSlot(slot.slotName)} title="Deletar slot">
+										🗑
+									</button>
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -271,11 +336,11 @@
 	<div class="output-container" bind:this={outputContainer}>
 		{#if gameOutput.length === 0}
 			<div class="welcome-message">
-				<p>Game loaded! Waiting for initial output...</p>
-				<p class="hint">The game will start shortly.</p>
+				<p>Jogo carregado! Aguardando output...</p>
+				<p class="hint">O jogo começará em instantes.</p>
 			</div>
 		{:else}
-			{#each gameOutput as output, i}
+			{#each gameOutput as output}
 				<div class="output-line" class:command={output.startsWith('>')}>
 					{output}
 				</div>
@@ -290,15 +355,9 @@
 			bind:value={currentCommand}
 			bind:this={commandInput}
 			on:keydown={handleCommand}
-			placeholder="Enter command..."
+			placeholder="Digite um comando... (↑↓ para histórico)"
 			class="command-input"
 		/>
-	</div>
-
-	<div class="hints">
-		<span class="hint-item">↑↓ History</span>
-		<span class="hint-item">Enter to send</span>
-		<span class="hint-item">Try: "look", "inventory", "help"</span>
 	</div>
 </div>
 
@@ -308,7 +367,6 @@
 		flex-direction: column;
 		height: 100%;
 		background: #1e1e1e;
-		border-radius: 8px;
 		overflow: hidden;
 	}
 
@@ -316,15 +374,17 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1rem 1.5rem;
+		padding: 0.75rem 1.5rem;
 		background: #2a2a2a;
 		border-bottom: 1px solid #3a3a3a;
+		flex-shrink: 0;
 	}
 
 	.game-title {
 		margin: 0;
-		font-size: 1.2rem;
+		font-size: 1rem;
 		color: #ffa500;
+		font-weight: 600;
 	}
 
 	.game-controls {
@@ -335,17 +395,300 @@
 	.btn-icon {
 		background: #3a3a3a;
 		border: none;
-		padding: 0.5rem;
+		padding: 0.4rem 0.5rem;
 		border-radius: 4px;
 		cursor: pointer;
-		font-size: 1.2rem;
-		transition: background 0.3s;
+		font-size: 1.1rem;
+		transition: background 0.2s;
+		line-height: 1;
 	}
 
-	.btn-icon:hover {
+	.btn-icon:hover:not(:disabled) {
 		background: #4a4a4a;
 	}
 
+	.btn-icon:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	/* ---- Feedback de save ---- */
+	.save-feedback {
+		background: #1e3a1e;
+		color: #80d080;
+		text-align: center;
+		padding: 0.35rem 1rem;
+		font-size: 0.88rem;
+		border-bottom: 1px solid #2a5a2a;
+		flex-shrink: 0;
+	}
+
+	/* ---- Confirmação inline de restart ---- */
+	.confirm-strip {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.6rem 1.5rem;
+		background: #2a1a0a;
+		border-bottom: 1px solid #5a3a1a;
+		font-size: 0.88rem;
+		color: #e0a060;
+		flex-shrink: 0;
+		flex-wrap: wrap;
+	}
+
+	.confirm-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.btn-danger {
+		background: #7a2020;
+		border: 1px solid #aa3030;
+		color: #ffaaaa;
+		padding: 0.3rem 0.85rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.85rem;
+		transition: background 0.2s;
+	}
+
+	.btn-danger:hover {
+		background: #9a2a2a;
+	}
+
+	.btn-cancel-sm {
+		background: #3a3a3a;
+		border: 1px solid #555;
+		color: #aaa;
+		padding: 0.3rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.85rem;
+		transition: background 0.2s;
+	}
+
+	.btn-cancel-sm:hover {
+		background: #4a4a4a;
+	}
+
+	/* ---- Save / Load panel ---- */
+	.save-load-panel {
+		background: #222;
+		border-bottom: 1px solid #3a3a3a;
+		padding: 0.75rem 1.5rem;
+		flex-shrink: 0;
+	}
+
+	.panel-title {
+		font-size: 0.88rem;
+		color: #aaa;
+		margin-bottom: 0.5rem;
+		font-weight: 600;
+	}
+
+	.panel-header-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.panel-row {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.slot-input {
+		flex: 1;
+		background: #1a1a1a;
+		border: 1px solid #4a4a4a;
+		color: #e0e0e0;
+		padding: 0.4rem 0.75rem;
+		border-radius: 4px;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.9rem;
+	}
+
+	.slot-input:focus {
+		outline: none;
+		border-color: #ffa500;
+	}
+
+	.btn-confirm {
+		background: #1e3a1e;
+		border: 1px solid #3a6a3a;
+		color: #80d080;
+		padding: 0.4rem 1rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.88rem;
+		transition: background 0.2s;
+	}
+
+	.btn-confirm:hover:not(:disabled) {
+		background: #2a5a2a;
+	}
+
+	.btn-confirm:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-cancel {
+		background: #3a3a3a;
+		border: none;
+		color: #aaa;
+		padding: 0.4rem 0.6rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.88rem;
+		transition: background 0.2s;
+	}
+
+	.btn-cancel:hover {
+		background: #4a4a4a;
+	}
+
+	.overwrite-warn {
+		margin-top: 0.4rem;
+		color: #e0a050;
+		font-size: 0.82rem;
+	}
+
+	.no-slots {
+		color: #888;
+		font-size: 0.88rem;
+		padding: 0.25rem 0;
+	}
+
+	/* Confirmação inline no painel de load */
+	.confirm-strip-inline {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.6rem 0.75rem;
+		background: #2a1a0a;
+		border: 1px solid #5a3a1a;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		color: #e0a060;
+		margin-bottom: 0.5rem;
+	}
+
+	.slot-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		max-height: 180px;
+		overflow-y: auto;
+	}
+
+	.slot-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: #1a1a1a;
+		border: 1px solid #3a3a3a;
+		border-radius: 4px;
+		padding: 0.4rem 0.75rem;
+		transition: border-color 0.2s;
+	}
+
+	.slot-item.confirming {
+		border-color: #6a3030;
+		background: #1e1010;
+	}
+
+	.slot-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
+	.slot-name {
+		color: #e0e0e0;
+		font-size: 0.88rem;
+		font-weight: 600;
+	}
+
+	.slot-date {
+		color: #777;
+		font-size: 0.76rem;
+	}
+
+	.slot-actions {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+	}
+
+	.btn-load {
+		background: #1e2a4a;
+		border: 1px solid #3a4a7a;
+		color: #88aaff;
+		padding: 0.3rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.83rem;
+		transition: background 0.2s, border-color 0.2s;
+	}
+
+	.btn-load:hover:not(:disabled) {
+		background: #2a3a6a;
+	}
+
+	.btn-load.selected {
+		background: #2a3a6a;
+		border-color: #5a6aaa;
+	}
+
+	.btn-load:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-delete {
+		background: none;
+		border: none;
+		color: #666;
+		padding: 0.3rem;
+		cursor: pointer;
+		font-size: 0.9rem;
+		border-radius: 4px;
+		transition: background 0.2s, color 0.2s;
+	}
+
+	.btn-delete:hover {
+		background: #3a2020;
+		color: #e06060;
+	}
+
+	.delete-confirm-text {
+		color: #e06060;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.btn-danger-sm {
+		background: #5a1a1a;
+		border: 1px solid #8a2a2a;
+		color: #ff9090;
+		padding: 0.25rem 0.65rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.82rem;
+		transition: background 0.2s;
+	}
+
+	.btn-danger-sm:hover {
+		background: #7a2020;
+	}
+
+	/* ---- Output area ---- */
 	.output-container {
 		flex: 1;
 		overflow-y: auto;
@@ -394,12 +737,20 @@
 		margin: 0.5rem 0;
 	}
 
+	.hint {
+		color: #666;
+		font-size: 0.9rem;
+		font-style: italic;
+	}
+
+	/* ---- Input area ---- */
 	.input-container {
 		display: flex;
 		align-items: center;
-		padding: 1rem 1.5rem;
+		padding: 0.75rem 1.5rem;
 		background: #2a2a2a;
 		border-top: 1px solid #3a3a3a;
+		flex-shrink: 0;
 	}
 
 	.prompt {
@@ -414,12 +765,12 @@
 		flex: 1;
 		background: #1e1e1e;
 		border: 1px solid #4a4a4a;
-		padding: 0.75rem 1rem;
+		padding: 0.65rem 1rem;
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 1rem;
 		color: #e0e0e0;
 		border-radius: 4px;
-		transition: border-color 0.3s;
+		transition: border-color 0.2s;
 	}
 
 	.command-input:focus {
@@ -430,198 +781,5 @@
 	.command-input:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.hints {
-		display: flex;
-		justify-content: center;
-		gap: 2rem;
-		padding: 0.75rem;
-		background: #2a2a2a;
-		border-top: 1px solid #3a3a3a;
-		font-size: 0.85rem;
-	}
-
-	.hint-item {
-		color: #888;
-	}
-
-	.hint {
-		color: #888;
-		font-size: 0.9rem;
-		font-style: italic;
-	}
-
-	/* ---- Save / Load UI ---- */
-
-	.save-feedback {
-		background: #2a3a2a;
-		color: #90d090;
-		text-align: center;
-		padding: 0.4rem 1rem;
-		font-size: 0.9rem;
-		border-bottom: 1px solid #3a5a3a;
-	}
-
-	.save-load-panel {
-		background: #222;
-		border-bottom: 1px solid #3a3a3a;
-		padding: 0.75rem 1.5rem;
-	}
-
-	.panel-title {
-		font-size: 0.9rem;
-		color: #aaa;
-		margin-bottom: 0.5rem;
-		font-weight: 600;
-	}
-
-	.panel-header-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 0.5rem;
-	}
-
-	.panel-row {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
-
-	.slot-input {
-		flex: 1;
-		background: #1a1a1a;
-		border: 1px solid #4a4a4a;
-		color: #e0e0e0;
-		padding: 0.4rem 0.75rem;
-		border-radius: 4px;
-		font-family: 'Courier New', Courier, monospace;
-		font-size: 0.9rem;
-	}
-
-	.slot-input:focus {
-		outline: none;
-		border-color: #ffa500;
-	}
-
-	.btn-confirm {
-		background: #2a4a2a;
-		border: 1px solid #4a7a4a;
-		color: #90d090;
-		padding: 0.4rem 1rem;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.btn-confirm:hover:not(:disabled) {
-		background: #3a6a3a;
-	}
-
-	.btn-confirm:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-cancel {
-		background: #3a3a3a;
-		border: none;
-		color: #aaa;
-		padding: 0.4rem 0.6rem;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.btn-cancel:hover {
-		background: #4a4a4a;
-	}
-
-	.overwrite-warn {
-		margin-top: 0.4rem;
-		color: #e0a050;
-		font-size: 0.82rem;
-	}
-
-	.no-slots {
-		color: #888;
-		font-size: 0.9rem;
-		padding: 0.25rem 0;
-	}
-
-	.slot-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		max-height: 180px;
-		overflow-y: auto;
-	}
-
-	.slot-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		background: #1a1a1a;
-		border: 1px solid #3a3a3a;
-		border-radius: 4px;
-		padding: 0.4rem 0.75rem;
-	}
-
-	.slot-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-	}
-
-	.slot-name {
-		color: #e0e0e0;
-		font-size: 0.9rem;
-		font-weight: 600;
-	}
-
-	.slot-date {
-		color: #888;
-		font-size: 0.78rem;
-	}
-
-	.slot-actions {
-		display: flex;
-		gap: 0.4rem;
-		align-items: center;
-	}
-
-	.btn-load {
-		background: #2a3a5a;
-		border: 1px solid #4a5a8a;
-		color: #90aaff;
-		padding: 0.3rem 0.75rem;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.85rem;
-	}
-
-	.btn-load:hover:not(:disabled) {
-		background: #3a4a7a;
-	}
-
-	.btn-load:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-delete {
-		background: none;
-		border: none;
-		color: #888;
-		padding: 0.3rem;
-		cursor: pointer;
-		font-size: 0.9rem;
-		border-radius: 4px;
-	}
-
-	.btn-delete:hover {
-		background: #3a2a2a;
-		color: #e08080;
 	}
 </style>

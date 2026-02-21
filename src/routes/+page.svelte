@@ -1,6 +1,5 @@
 <script lang="ts">
 	// Yarner - AI-Assisted Text Adventure Player
-	// MVP v0.1.0
 
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
@@ -18,7 +17,7 @@
 		try {
 			await gameState.loadGame(filename, data);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to load game';
+			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
 			console.error('Error loading game:', error);
 		}
 	}
@@ -26,13 +25,13 @@
 
 <main>
 	<header>
-		<h1>🧶 Yarner</h1>
-		<p>AI-Assisted Text Adventure Player</p>
+		<span class="logo">🧶 Yarner</span>
+		<span class="tagline">Interactive Fiction + IA</span>
 	</header>
 
 	{#if errorMessage}
 		<div class="error-banner">
-			<strong>Error:</strong> {errorMessage}
+			<strong>Erro:</strong> {errorMessage}
 			<button on:click={() => errorMessage = ''}>×</button>
 		</div>
 	{/if}
@@ -69,40 +68,47 @@
 	}
 
 	header {
-		background: #2a2a2a;
-		padding: 1.5rem 2rem;
-		border-bottom: 2px solid #3a3a3a;
-		text-align: center;
+		background: #242424;
+		padding: 0.45rem 1.5rem;
+		border-bottom: 1px solid #3a3a3a;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		flex-shrink: 0;
 	}
 
-	h1 {
-		margin: 0;
-		font-size: 2.5rem;
+	.logo {
+		font-size: 1.2rem;
+		font-weight: 700;
 		color: #ffa500;
+		letter-spacing: -0.01em;
 	}
 
-	header p {
-		margin: 0.5rem 0 0;
-		color: #b0b0b0;
+	.tagline {
+		font-size: 0.75rem;
+		color: #555;
 	}
 
 	.error-banner {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		background: #ff4444;
-		color: white;
-		padding: 1rem 2rem;
-		font-size: 1rem;
+		background: #331818;
+		color: #ff8888;
+		border-bottom: 1px solid #552222;
+		padding: 0.6rem 1.5rem;
+		font-size: 0.9rem;
+		flex-shrink: 0;
 	}
 
 	.error-banner button {
 		background: none;
 		border: none;
-		color: white;
-		font-size: 1.5rem;
+		color: #ff8888;
+		font-size: 1.3rem;
 		cursor: pointer;
-		padding: 0 0.5rem;
+		padding: 0 0.25rem;
+		line-height: 1;
 	}
 
 	.upload-screen {
@@ -111,12 +117,12 @@
 		align-items: center;
 		justify-content: center;
 		background: #1a1a1a;
+		overflow-y: auto;
 	}
 
 	.container {
 		display: flex;
 		flex: 1;
-		gap: 0;
 		overflow: hidden;
 	}
 
@@ -129,7 +135,7 @@
 
 	.game-panel {
 		background: #1e1e1e;
-		border-right: 2px solid #3a3a3a;
+		border-right: 1px solid #3a3a3a;
 	}
 
 	.ai-panel {
@@ -139,8 +145,8 @@
 
 	.map-panel {
 		background: #1e1e1e;
-		border-left: 2px solid #3a3a3a;
-		flex: 0 0 320px;
+		border-left: 1px solid #3a3a3a;
+		flex: 0 0 300px;
 		overflow: hidden;
 	}
 
@@ -151,8 +157,14 @@
 
 		.game-panel {
 			border-right: none;
-			border-bottom: 2px solid #3a3a3a;
-			min-height: 60vh;
+			border-bottom: 1px solid #3a3a3a;
+			min-height: 55vh;
+		}
+
+		.map-panel {
+			flex: 0 0 200px;
+			border-left: none;
+			border-top: 1px solid #3a3a3a;
 		}
 	}
 </style>
