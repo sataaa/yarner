@@ -46,7 +46,8 @@ export async function sendToAIStreaming(
 	currentGameStatus: GameStatus,
 	gameName: string,
 	onStream: StreamCallback,
-	apiUrl: string = DEFAULT_API_URL
+	apiUrl: string = DEFAULT_API_URL,
+	signal?: AbortSignal
 ): Promise<AIResponse> {
 	const systemPrompt = buildSystemPrompt(gameName, currentGameStatus, gameHistoryDiff);
 
@@ -72,7 +73,8 @@ export async function sendToAIStreaming(
 			'Content-Type': 'application/json',
 			...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
 		},
-		body: JSON.stringify(requestBody)
+		body: JSON.stringify(requestBody),
+		signal
 	});
 
 	if (!response.ok) {
