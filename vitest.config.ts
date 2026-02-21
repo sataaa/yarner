@@ -20,7 +20,9 @@ export default defineConfig({
 			include: [
 				'src/lib/api/claude.ts',
 				'src/lib/stores/aiPersistence.ts',
-				'src/lib/stores/gameState.ts'
+				'src/lib/stores/gameState.ts',
+				'src/lib/zmachine/glk/types.ts',
+				'src/lib/zmachine/glk/WebGlk.ts'
 			],
 			thresholds: {
 				lines: 95,
