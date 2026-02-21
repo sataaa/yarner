@@ -16,6 +16,7 @@ export default defineConfig({
 		include: ['src/**/*.test.ts'],
 		coverage: {
 			provider: 'v8',
+			reporter: ['text', 'json-summary'],
 			include: [
 				'src/lib/api/claude.ts',
 				'src/lib/stores/aiPersistence.ts',
