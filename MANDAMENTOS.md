@@ -22,6 +22,15 @@
 - Nunca desvie do que está documentado sem discussão explícita com Godoy
 - A memória do projeto é sagrada
 
+### 5️⃣ TESTES UNITÁRIOS OBRIGATÓRIOS
+- **TODO** novo módulo TypeScript com lógica de negócio DEVE ter testes unitários (`*.test.ts`)
+- **Cobertura mínima obrigatória: 100%** em linhas, branches, funções e statements
+- Os thresholds são enforced pelo CI — o merge é bloqueado se a cobertura cair
+- Use `vitest` + `fake-indexeddb` para módulos com IndexedDB
+- Mock browser APIs e engine externa (`createGameEngine`) em testes de stores
+- Use `/* v8 ignore start/stop */` apenas para branches de migração/bootstrap impossíveis de simular em testes (ex: upgrade de IndexedDB)
+- Script: `npm run test:coverage` para ver o relatório completo
+
 ### 4️⃣ DOCUMENTAÇÃO PARA TRANSFERÊNCIA FUTURA
 - **CRÍTICO:** Este projeto pode ser vendido/transferido para outros desenvolvedores
 - Toda decisão técnica DEVE ser documentada em `MEMORIA-PROJETO.md`
@@ -233,6 +242,6 @@ yarner/
 
 ---
 
-**Última atualização:** 2026-02-18
-**Versão:** 1.2
-**Status:** Épico 1 ✅ Completo — Épico 2 ✅ Completo — Épico 3 ✅ Completo — Épico 4 pendente
+**Última atualização:** 2026-02-20
+**Versão:** 1.3
+**Status:** Épico 1 ✅ — Épico 2 ✅ — Épico 3 ✅ — Épico 4 ✅ — CI + Unit Tests ✅
