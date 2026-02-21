@@ -177,10 +177,14 @@ Regras para o campo locaisVisitados:
 /**
  * Parse AI response to extract the visible message and the game status JSON.
  *
- * The AI appends a ```game-status ... ``` block at the end. We extract it,
- * parse the JSON, and return the clean message separately.
+ * The AI appends a GAME_STATUS_JSON_START...GAME_STATUS_JSON_END block at the end.
+ * We extract it, parse the JSON, and return the clean message separately.
+ *
+ * The block is ALWAYS stripped from the visible message, even if JSON parsing fails,
+ * so the user never sees raw JSON in the chat.
  */
-function parseAIResponse(fullText: string, fallbackStatus: GameStatus): AIResponse {
+/** @internal Exported for unit testing */
+export function parseAIResponse(fullText: string, fallbackStatus: GameStatus): AIResponse {
 	// Try multiple patterns that LLMs might use for the status block
 	const patterns = [
 		/GAME_STATUS_JSON_START\s*([\s\S]*?)\s*GAME_STATUS_JSON_END/,
@@ -195,31 +199,61 @@ function parseAIResponse(fullText: string, fallbackStatus: GameStatus): AIRespon
 	for (const regex of patterns) {
 		const match = fullText.match(regex);
 		if (match) {
-			try {
-				const parsed = JSON.parse(match[1].trim());
-				// Validate it looks like a game status (has at least one expected field)
-				if (parsed.localizacaoAtual !== undefined || parsed.inventario !== undefined) {
-					updatedGameStatus = {
-						...fallbackStatus,
-						...parsed,
-						// Merge locaisVisitados additively — never erase existing location data
-						// even if the model returns an empty {} or partial object
-						locaisVisitados: {
-							...fallbackStatus.locaisVisitados,
-							...(parsed.locaisVisitados || {})
-						},
-						ultimaAtualizacao: new Date().toISOString()
-					};
-					message = fullText.replace(regex, '').trim();
-					break;
-				}
-			} catch (e) {
-				console.warn('Failed to parse game status from AI response:', e);
+			// Sempre remove o bloco da mensagem visível, independente de parsing
+			message = fullText.replace(regex, '').trim();
+
+			const parsed = tryRepairAndParseJSON(match[1].trim());
+			if (parsed && (parsed.localizacaoAtual !== undefined || parsed.inventario !== undefined)) {
+				updatedGameStatus = {
+					...fallbackStatus,
+					...parsed,
+					// Merge locaisVisitados additivamente — nunca apaga dados existentes
+					locaisVisitados: {
+						...fallbackStatus.locaisVisitados,
+						...(parsed.locaisVisitados || {})
+					},
+					ultimaAtualizacao: new Date().toISOString()
+				};
 			}
+			break;
 		}
 	}
 
 	return { message, updatedGameStatus };
+}
+
+/**
+ * Tenta fazer parse de um JSON, e se falhar, tenta reparar fechando chaves/colchetes
+ * abertos (modelos pequenos às vezes truncam o JSON no final).
+ */
+/** @internal Exported for unit testing */
+export function tryRepairAndParseJSON(s: string): Record<string, unknown> | null {
+	// Tenta primeiro como está
+	try { return JSON.parse(s); } catch {}
+
+	// Conta chaves e colchetes não fechados para reparar JSON truncado
+	let braces = 0, brackets = 0;
+	let inStr = false, esc = false;
+	for (const ch of s) {
+		if (esc) { esc = false; continue; }
+		if (ch === '\\' && inStr) { esc = true; continue; }
+		if (ch === '"') { inStr = !inStr; continue; }
+		if (inStr) continue;
+		if (ch === '{') braces++;
+		else if (ch === '}') braces = Math.max(0, braces - 1);
+		else if (ch === '[') brackets++;
+		else if (ch === ']') brackets = Math.max(0, brackets - 1);
+	}
+
+	const repaired = s + ']'.repeat(brackets) + '}'.repeat(braces);
+	try {
+		const result = JSON.parse(repaired);
+		console.info('Repaired truncated JSON from AI response');
+		return result;
+	} catch {}
+
+	console.warn('Failed to parse game status JSON even after repair attempt');
+	return null;
 }
 
 /**
