@@ -2,6 +2,8 @@
 
 **AI-Assisted Text Adventure Player**
 
+[![CI](https://github.com/sataaa/yarner/actions/workflows/ci.yml/badge.svg)](https://github.com/sataaa/yarner/actions/workflows/ci.yml)
+
 Yarner is a web-based interface for playing classic z-machine text adventure games with real-time AI assistance. Load any `.z3`–`.z8` file and play alongside an AI companion that reads the game, tracks your progress, maps visited locations, and helps you when you get stuck.
 
 ---
@@ -113,6 +115,25 @@ graph TD
 - **Game status as AI memory** — instead of resending the full game log each time, the AI maintains a structured JSON status (location, inventory, objectives, `locaisVisitados`) that is persisted in IndexedDB and included as context in every request.
 - **Additive merge for location map** — location data is never overwritten; new data from each AI response is merged into the existing map, so no information is lost even if the model returns a partial response.
 - **Save slots include AI state** — each save slot stores the z-machine snapshot, the game history sent to the AI, and the full `GameStatus`, so restoring a slot also restores the AI's memory to that exact moment.
+
+---
+
+## 🧪 Testing
+
+The three core TypeScript modules have full unit test coverage enforced by CI:
+
+| File | Tests |
+|---|---|
+| `src/lib/api/claude.ts` | Streaming, parsing, error handling |
+| `src/lib/stores/aiPersistence.ts` | IndexedDB CRUD round-trips |
+| `src/lib/stores/gameState.ts` | Game lifecycle, save/load, engine mocks |
+
+**83 tests · 100% line/branch/function/statement coverage** (thresholds enforced — CI fails if coverage drops).
+
+```bash
+npm test              # run all tests
+npm run test:coverage # run with coverage report
+```
 
 ---
 

@@ -481,6 +481,35 @@ yarner/
 
 ---
 
+### Sessão 7: 2026-02-18 (Épico 4 – UI/UX Polish)
+
+**Participantes:** Claude Code + Godoy
+
+**Objetivo:** UI/UX polish geral em todos os componentes.
+
+**Melhorias implementadas:**
+
+1. **Textos PT-BR em todos os componentes** — FileUploader, GamePanel e +page.svelte tinham textos em inglês que violavam o mandamento de Português Brasileiro.
+2. **Drag-and-drop no FileUploader** — área com borda dashed agora aceita arquivos arrastados. Estados `isDragging` com feedback visual (borda laranja + fundo amarelado + ícone 📂).
+3. **Confirmações inline (sem `confirm()` nativo)** — Substituídas em 3 lugares do GamePanel:
+   - Restart: strip laranja inline abaixo do header
+   - Carregar slot: confirmação no topo do painel de load com nome do slot
+   - Deletar slot: confirmação substituindo o conteúdo do próprio slot item
+4. **Hints bar removida do GamePanel** — economiza espaço vertical; dica integrada no placeholder do input.
+5. **Markdown nas respostas da IA** — função `renderMarkdown()` com sanitização XSS (escapa HTML antes de aplicar transformações). Suporta: negrito, itálico, bold+italic, código inline, listas ul/ol, quebras de linha. Renderizado com `{@html}` apenas nas mensagens do assistente.
+6. **Transições slide** — `svelte/transition:slide` nos painéis de status, mapa, save/load e feedback.
+7. **Header global compacto** — de `padding: 1.5rem 2rem` + h1 2.5rem + subtítulo, para uma barra fina horizontal (0.45rem padding) com logo + tagline inline.
+8. **Estado vazio do chat melhorado** — ícone 🤖 + chips de exemplo de perguntas clicáveis.
+9. **Estilos das mensagens do assistente** — markdown renderizado com cores: strong (amarelo), em (azul suave), code (verde monoespaçado), listas formatadas.
+
+**Padrão do `renderMarkdown()`:**
+- Sempre escapar `&`, `<`, `>` primeiro (XSS prevention)
+- Processar inline: `***` > `**` > `*` > `` ` ``
+- Processar listas linha a linha com rastreamento de estado
+- Usado apenas em mensagens do `role === 'assistant'`
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
 ### ✅ COMPLETADO - Épico 1: Jogo Funcional
@@ -516,7 +545,7 @@ yarner/
 
 ### 📋 Épico 4: Próximas Melhorias
 1. ✅ Save/load de progresso do jogo
-2. ⬜ UI/UX polish e responsividade
+2. ✅ UI/UX polish e responsividade
 3. ⬜ Sugestões proativas da IA (modo ativo)
 4. ⬜ Testes com outros jogos além de Zork I
 5. ⬜ Deploy inicial (Vercel/Netlify)
@@ -566,8 +595,8 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 ## 📊 STATUS ATUAL DO PROJETO
 
 **Versão:** 0.4.0-alpha
-**Última Sessão:** 2026-02-18 (Sessão 5)
-**Épico Atual:** Épico 3 ✅ COMPLETO — Iniciando Épico 4
+**Última Sessão:** 2026-02-18 (Sessão 7)
+**Épico Atual:** Épico 4 em andamento
 
 **Funcionalidades Completas e Testadas:**
 - ✅ Upload e carregamento de jogos z-machine (.z3, .z4, .z5, .z8)
@@ -585,7 +614,6 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 - ✅ Botão 🗺️ inline + expansão para terceira coluna
 
 **Pendente:**
-- ⬜ Save/load de progresso do jogo (Épico 4)
 - ⬜ Deploy em produção
 
 **Repositório GitHub:** https://github.com/sataaa/yarner
@@ -593,5 +621,5 @@ Importante manter disciplina e NÃO adicionar features fora do MVP, mesmo que se
 
 ---
 
-**Última atualização:** 2026-02-18 (Sessão 6 - Save/Load implementado e testado)
-**Próxima revisão:** Sessão 7
+**Última atualização:** 2026-02-18 (Sessão 7 - UI/UX polish)
+**Próxima revisão:** Sessão 8
