@@ -25,7 +25,7 @@ Interface web para jogar text adventures (Z-machine) com um assistente de IA ao 
 ### Stack Tecnológica
 - **Frontend:** SvelteKit (adapter-static, SPA mode) + TypeScript
 - **Z-Machine:** ifvms.js (não Parchment.js — sem API programática) + WebGlk custom
-- **Armazenamento:** IndexedDB via `idb` (DB v2: `gameStatus`, `chatHistory`, `gameSaves`)
+- **Armazenamento:** IndexedDB via `idb` (DB v3: `gameStatus`, `chatHistory`, `gameSaves`, `gameLibrary`)
 - **API de IA:** OpenAI-compatible — funciona com LM Studio, Ollama, OpenAI, OpenRouter, etc.
 - **Escopo MVP:** Apenas Z-machine (.z3, .z4, .z5, .z8). Sem Glulx, sem multiplayer, sem backend complexo.
 
@@ -36,10 +36,13 @@ A IA mantém um "caderno de notas" (`AIMemory = string[]`) — lista de até 20 
 | Cenário | Ordem |
 |---------|-------|
 | Restart | `resetAIStateForRestart()` ANTES de `restartGame()` |
-| Load slot | `restoreAIMemoryFromSave()` ANTES de `loadFromSaveSlot()` |
-| Novo jogo | `clearGameAIData()` ANTES de `loadGame()` |
+| Load slot (in-game) | `restoreAIMemoryFromSave()` ANTES de `loadFromSaveSlot()` |
+| Load slot (tela inicial) | `saveAIMemory/saveChatHistory(slot.gameName)` ANTES de `loadFromSaveSlot()` |
+| Novo jogo (upload) | `clearGameAIData()` ANTES de `loadGame()` |
+| Recarregar da biblioteca | NÃO limpar AI data — preservar dados do IDB |
 
 Causa raiz: reactive `$: if ($isGameLoaded && $currentGameName)` dispara `loadAIStateForGame` do IDB.
+Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funciona na tela inicial (gameName vazio).
 
 ---
 
@@ -56,14 +59,15 @@ Causa raiz: reactive `$: if ($isGameLoaded && $currentGameName)` dispara `loadAI
 | 7 | 2026-02-18 | UI/UX Polish | [docs/sessao-07.md](docs/sessao-07.md) |
 | 8 | 2026-02-21 | Testes, CI e Refatoração | [docs/sessao-08.md](docs/sessao-08.md) |
 | 9 | 2026-03-01 | Temas, Providers, AI Memory Notes | [docs/sessao-09.md](docs/sessao-09.md) |
+| 10 | 2026-03-01 | Fechar Jogo, Biblioteca, Quick-Load | [docs/sessao-10.md](docs/sessao-10.md) |
 
 ---
 
 ## 📊 STATUS ATUAL
 
-**Versão:** 0.5.0-alpha
-**Última Sessão:** 9 (2026-03-01)
-**Testes:** 182 passando | 99%+ coverage
+**Versão:** 0.6.0-alpha
+**Última Sessão:** 10 (2026-03-01)
+**Testes:** 193 passando | 99%+ coverage
 **CI:** GitHub Actions (bloqueia merge em falha)
 
 ### ✅ Completado
@@ -75,15 +79,15 @@ Causa raiz: reactive `$: if ($isGameLoaded && $currentGameName)` dispara `loadAI
 - Sistema de providers (LM Studio, Gemini, OpenAI, OpenRouter, custom)
 - Debug mode, scroll inteligente
 - Testes unitários + CI
+- Botão fechar jogo (voltar à tela inicial)
+- Biblioteca de jogos (IDB v3, SHA-256, ArrayBuffer persistido)
+- Quick-load na tela inicial (3 saves recentes por jogo)
 
 ### 📋 Backlog (não refinado)
-1. **Botão fechar jogo** — voltar à tela inicial para carregar outro jogo
-2. **Biblioteca de jogos na tela inicial** — guardar jogos já carregados (identificação SHA), mostrar lista com botão direto para recarregar, remover da lista (x), avisar quando arquivo original não existe mais
-3. **Quick-load na tela inicial** — mostrar últimos 3 saves de cada jogo na biblioteca, permitindo carregar jogo + save direto da tela inicial
-4. **Jogos validados** — mostrar na tela inicial jogos que já foram testados/validados (por enquanto só zork1.z5)
-5. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
-6. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
+1. **Jogos validados** — mostrar na tela inicial jogos que já foram testados/validados (por enquanto só zork1.z5)
+2. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
+3. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
 
 ---
 
-**Última atualização:** 2026-03-01 (Sessão 9)
+**Última atualização:** 2026-03-01 (Sessão 10)
