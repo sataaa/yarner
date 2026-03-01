@@ -257,20 +257,12 @@ describe('saveGame', () => {
 		expect(writeSaveSlot).toHaveBeenCalledOnce();
 	});
 
-	it('includes the AI game status in the slot when provided', async () => {
+	it('includes the AI memory in the slot when provided', async () => {
 		await loadGame('zork.z5', new ArrayBuffer(8));
-		const aiStatus = {
-			localizacaoAtual: 'Forest',
-			inventario: ['lantern'],
-			objetivos: [],
-			coisasNaoExploradas: [],
-			observacoes: [],
-			locaisVisitados: {},
-			ultimaAtualizacao: '2026-01-01T00:00:00.000Z'
-		};
-		await saveGame('slot', aiStatus);
+		const aiMemory = ['Estou na floresta', 'Tenho uma lanterna'];
+		await saveGame('slot', aiMemory);
 		const slot = vi.mocked(writeSaveSlot).mock.calls[0][1];
-		expect(slot.aiGameStatus).toEqual(aiStatus);
+		expect(slot.aiMemory).toEqual(aiMemory);
 	});
 });
 

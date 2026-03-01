@@ -1,24 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { parseAIResponse, tryRepairAndParseJSON, getErrorMessage, sendToAIStreaming, PROVIDER_PRESETS } from './claude';
+import { parseAIResponse, applyMemoryOperations, buildSystemPrompt, getErrorMessage, sendToAIStreaming, fetchAvailableModels, PROVIDER_PRESETS } from './claude';
 import type { ProviderPreset } from './claude';
-import type { GameStatus } from '$lib/stores/aiPersistence';
+import type { AIMemory } from '$lib/stores/aiPersistence';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const fallback: GameStatus = {
-	localizacaoAtual: 'Unknown',
-	inventario: [],
-	objetivos: [],
-	coisasNaoExploradas: [],
-	observacoes: [],
-	locaisVisitados: {},
-	ultimaAtualizacao: '2026-01-01T00:00:00.000Z'
-};
-
-const makeStatusJson = (loc: string) =>
-	`{"localizacaoAtual":"${loc}","inventario":[],"objetivos":[],"coisasNaoExploradas":[],"observacoes":[],"locaisVisitados":{},"ultimaAtualizacao":"2026-01-01T00:00:00.000Z"}`;
+const emptyMemory: AIMemory = [];
 
 /**
  * Build a ReadableStream that emits SSE chunks, as a real streaming API would.
@@ -51,7 +40,7 @@ describe('sendToAIStreaming', () => {
 		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
 		vi.stubGlobal('fetch', mockFetch);
 
-		await sendToAIStreaming('my-key', [], '', fallback, 'Zork', () => {});
+		await sendToAIStreaming('my-key', [], '', emptyMemory, 'Zork', () => {});
 
 		expect(mockFetch).toHaveBeenCalledOnce();
 		const [, options] = mockFetch.mock.calls[0];
@@ -63,7 +52,7 @@ describe('sendToAIStreaming', () => {
 		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
 		vi.stubGlobal('fetch', mockFetch);
 
-		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 
 		const [, options] = mockFetch.mock.calls[0];
 		expect(options.headers).not.toHaveProperty('Authorization');
@@ -76,26 +65,25 @@ describe('sendToAIStreaming', () => {
 		}));
 
 		const calls: string[] = [];
-		await sendToAIStreaming('', [], '', fallback, 'Zork', (text) => calls.push(text));
+		await sendToAIStreaming('', [], '', emptyMemory, 'Zork', (text) => calls.push(text));
 
 		expect(calls).toEqual(['Hello', 'Hello world']);
 	});
 
-	it('parses game status from the streamed response', async () => {
-		const statusJson = makeStatusJson('Forest');
+	it('parses memory updates from the streamed response', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
 			ok: true,
 			body: makeSSEStream([
-				'Dica aqui.\nGAME_STATUS_JSON_START\n',
-				statusJson,
-				'\nGAME_STATUS_JSON_END'
+				'Dica aqui.\nMEMORY_UPDATE_START\n',
+				'ADD Jogador está na floresta\n',
+				'MEMORY_UPDATE_END'
 			])
 		}));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 
-		expect(result.updatedGameStatus.localizacaoAtual).toBe('Forest');
-		expect(result.message).not.toContain('GAME_STATUS_JSON_START');
+		expect(result.updatedMemory).toEqual(['Jogador está na floresta']);
+		expect(result.message).not.toContain('MEMORY_UPDATE_START');
 	});
 
 	it('passes the AbortSignal to fetch', async () => {
@@ -103,7 +91,7 @@ describe('sendToAIStreaming', () => {
 		vi.stubGlobal('fetch', mockFetch);
 		const controller = new AbortController();
 
-		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {}, undefined, undefined, controller.signal);
+		await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {}, undefined, undefined, controller.signal);
 
 		const [, options] = mockFetch.mock.calls[0];
 		expect(options.signal).toBe(controller.signal);
@@ -117,14 +105,14 @@ describe('sendToAIStreaming', () => {
 			text: () => Promise.resolve('Unauthorized')
 		}));
 
-		await expect(sendToAIStreaming('', [], '', fallback, 'Zork', () => {}))
+		await expect(sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {}))
 			.rejects.toThrow('401');
 	});
 
 	it('throws when response body is null', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: null }));
 
-		await expect(sendToAIStreaming('', [], '', fallback, 'Zork', () => {}))
+		await expect(sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {}))
 			.rejects.toThrow('No response body');
 	});
 
@@ -136,8 +124,7 @@ describe('sendToAIStreaming', () => {
 			text: () => Promise.reject(new Error('body read failed'))
 		}));
 
-		// The catch(() => '') runs, so errorText = '' and statusText is used instead
-		await expect(sendToAIStreaming('', [], '', fallback, 'Zork', () => {}))
+		await expect(sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {}))
 			.rejects.toThrow('500');
 	});
 
@@ -145,7 +132,7 @@ describe('sendToAIStreaming', () => {
 		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
 		vi.stubGlobal('fetch', mockFetch);
 
-		await sendToAIStreaming('key', [], '', fallback, 'Zork', () => {}, undefined, 'gemini-2.5-flash');
+		await sendToAIStreaming('key', [], '', emptyMemory, 'Zork', () => {}, undefined, 'gemini-2.5-flash');
 
 		const [, options] = mockFetch.mock.calls[0];
 		const body = JSON.parse(options.body);
@@ -157,7 +144,7 @@ describe('sendToAIStreaming', () => {
 		vi.stubGlobal('fetch', mockFetch);
 
 		const customUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-		await sendToAIStreaming('key', [], '', fallback, 'Zork', () => {}, customUrl);
+		await sendToAIStreaming('key', [], '', emptyMemory, 'Zork', () => {}, customUrl);
 
 		const [url] = mockFetch.mock.calls[0];
 		expect(url).toBe(customUrl);
@@ -167,7 +154,7 @@ describe('sendToAIStreaming', () => {
 		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
 		vi.stubGlobal('fetch', mockFetch);
 
-		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 
 		const [, options] = mockFetch.mock.calls[0];
 		const body = JSON.parse(options.body);
@@ -176,18 +163,16 @@ describe('sendToAIStreaming', () => {
 
 	it('processes remaining buffered data when stream ends without trailing newline', async () => {
 		const encoder = new TextEncoder();
-		// Last chunk has no trailing \n — data stays in buffer until stream ends
 		const stream = new ReadableStream<Uint8Array>({
 			start(controller) {
 				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'first' } }] })}\n\n`));
-				// No trailing newline — this will remain in the buffer
 				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: ' last' } }] })}`));
 				controller.close();
 			}
 		});
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 		expect(result.message).toBe('first last');
 	});
 
@@ -202,7 +187,7 @@ describe('sendToAIStreaming', () => {
 		});
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 		expect(result.message).toBe('ok');
 	});
 
@@ -217,7 +202,7 @@ describe('sendToAIStreaming', () => {
 		});
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 		expect(result.message).toBe('ok');
 	});
 
@@ -232,7 +217,7 @@ describe('sendToAIStreaming', () => {
 		});
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 		expect(result.message).toBe('ok');
 	});
 
@@ -248,7 +233,7 @@ describe('sendToAIStreaming', () => {
 		});
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
 
-		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		const result = await sendToAIStreaming('', [], '', emptyMemory, 'Zork', () => {});
 		expect(result.message).toBe('ok');
 	});
 });
@@ -258,137 +243,134 @@ describe('sendToAIStreaming', () => {
 // ---------------------------------------------------------------------------
 
 describe('parseAIResponse', () => {
-	it('parses GAME_STATUS_JSON_START/END delimiter', () => {
-		const text = `Minha dica.\nGAME_STATUS_JSON_START\n${makeStatusJson('West of House')}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, fallback);
-		expect(result.updatedGameStatus.localizacaoAtual).toBe('West of House');
+	it('strips MEMORY_UPDATE block and applies operations', () => {
+		const text = 'Dica aqui.\nMEMORY_UPDATE_START\nADD Jogador está na floresta\nMEMORY_UPDATE_END';
+		const result = parseAIResponse(text, []);
+		expect(result.message).toBe('Dica aqui.');
+		expect(result.updatedMemory).toEqual(['Jogador está na floresta']);
 	});
 
-	it('strips the JSON block from the visible message', () => {
-		const text = `Resposta visível.\nGAME_STATUS_JSON_START\n${makeStatusJson('Forest')}\nGAME_STATUS_JSON_END`;
-		const { message } = parseAIResponse(text, fallback);
+	it('returns original memory when no block is present', () => {
+		const memory = ['nota existente'];
+		const result = parseAIResponse('Só texto sem bloco.', memory);
+		expect(result.updatedMemory).toBe(memory);
+		expect(result.message).toBe('Só texto sem bloco.');
+	});
+
+	it('strips the block from the visible message', () => {
+		const text = 'Resposta visível.\nMEMORY_UPDATE_START\nADD nota\nMEMORY_UPDATE_END';
+		const { message } = parseAIResponse(text, []);
 		expect(message).toBe('Resposta visível.');
-		expect(message).not.toContain('GAME_STATUS_JSON_START');
-		expect(message).not.toContain('localizacaoAtual');
+		expect(message).not.toContain('MEMORY_UPDATE_START');
 	});
 
-	it('parses ```game-status``` delimiter', () => {
-		const text = `Dica.\n\`\`\`game-status\n${makeStatusJson('Kitchen')}\n\`\`\``;
-		const result = parseAIResponse(text, fallback);
-		expect(result.updatedGameStatus.localizacaoAtual).toBe('Kitchen');
-	});
-
-	it('falls back to fallbackStatus when no JSON block is present', () => {
-		const result = parseAIResponse('Só texto sem bloco de status.', fallback);
-		expect(result.updatedGameStatus).toEqual(fallback);
-		expect(result.message).toBe('Só texto sem bloco de status.');
-	});
-
-	it('falls back to fallbackStatus when JSON is malformed', () => {
-		const text = `Dica.\nGAME_STATUS_JSON_START\n{invalid json!!!\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, fallback);
-		expect(result.updatedGameStatus).toEqual(fallback);
-	});
-
-	it('falls back when parsed JSON has neither localizacaoAtual nor inventario (covers || right side)', () => {
-		// parsed is non-null but has no recognized fields → condition evaluates right side of ||
-		const unknownJson = `{"someOtherField":"value","count":1}`;
-		const text = `Dica.\nGAME_STATUS_JSON_START\n${unknownJson}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, fallback);
-		// Neither field is present → updatedGameStatus stays as fallback
-		expect(result.updatedGameStatus).toEqual(fallback);
-	});
-
-	it('updates status when only inventario is present (covers || right side as deciding factor)', () => {
-		// localizacaoAtual is absent → left side of || is false → right side (inventario) decides
-		const inventarioOnlyJson = `{"inventario":["sword","lantern"],"objetivos":[],"coisasNaoExploradas":[],"observacoes":[],"locaisVisitados":{},"ultimaAtualizacao":"2026-01-01T00:00:00.000Z"}`;
-		const text = `Dica.\nGAME_STATUS_JSON_START\n${inventarioOnlyJson}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, fallback);
-		expect(result.updatedGameStatus.inventario).toEqual(['sword', 'lantern']);
-	});
-
-	it('merges locaisVisitados additively — does not overwrite existing entries', () => {
-		const statusWithLocations: GameStatus = {
-			...fallback,
-			locaisVisitados: {
-				'West of House': { saidas: { north: 'Forest' }, notas: ['mailbox here'] }
-			}
-		};
-		const newLocJson = `{"localizacaoAtual":"Forest","inventario":[],"objetivos":[],"coisasNaoExploradas":[],"observacoes":[],"locaisVisitados":{"Forest":{"saidas":{"south":"West of House"},"notas":[]}},"ultimaAtualizacao":"2026-01-01T00:00:00.000Z"}`;
-		const text = `Dica.\nGAME_STATUS_JSON_START\n${newLocJson}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, statusWithLocations);
-		expect(result.updatedGameStatus.locaisVisitados['West of House']).toBeDefined();
-		expect(result.updatedGameStatus.locaisVisitados['Forest']).toBeDefined();
-	});
-
-	it('preserves existing locaisVisitados when model returns empty {}', () => {
-		const statusWithLocations: GameStatus = {
-			...fallback,
-			locaisVisitados: { 'West of House': { saidas: {}, notas: [] } }
-		};
-		const emptyLocJson = `{"localizacaoAtual":"West of House","inventario":[],"objetivos":[],"coisasNaoExploradas":[],"observacoes":[],"locaisVisitados":{},"ultimaAtualizacao":"2026-01-01T00:00:00.000Z"}`;
-		const text = `Dica.\nGAME_STATUS_JSON_START\n${emptyLocJson}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, statusWithLocations);
-		expect(result.updatedGameStatus.locaisVisitados['West of House']).toBeDefined();
+	it('handles empty block — no changes to memory', () => {
+		const memory = ['nota existente'];
+		const text = 'Dica.\nMEMORY_UPDATE_START\n\nMEMORY_UPDATE_END';
+		const result = parseAIResponse(text, memory);
+		expect(result.updatedMemory).toEqual(['nota existente']);
 	});
 });
 
 // ---------------------------------------------------------------------------
-// tryRepairAndParseJSON
+// applyMemoryOperations
 // ---------------------------------------------------------------------------
 
-describe('tryRepairAndParseJSON', () => {
-	it('parses valid JSON', () => {
-		expect(tryRepairAndParseJSON('{"key":"value"}')).toEqual({ key: 'value' });
+describe('applyMemoryOperations', () => {
+	it('ADD appends a new note', () => {
+		const result = applyMemoryOperations([], 'ADD Nova nota');
+		expect(result).toEqual(['Nova nota']);
 	});
 
-	it('repairs truncated JSON with unclosed brace and bracket', () => {
-		const result = tryRepairAndParseJSON('{"localizacaoAtual":"West of House","inventario":[');
-		expect(result).not.toBeNull();
-		expect((result as Record<string, unknown>).localizacaoAtual).toBe('West of House');
+	it('ADD multiple notes', () => {
+		const result = applyMemoryOperations([], 'ADD Nota 1\nADD Nota 2');
+		expect(result).toEqual(['Nota 1', 'Nota 2']);
 	});
 
-	it('returns null for completely invalid input', () => {
-		expect(tryRepairAndParseJSON('this is not json at all!!!')).toBeNull();
+	it('REMOVE removes note by 1-based index', () => {
+		const result = applyMemoryOperations(['a', 'b', 'c'], 'REMOVE 2');
+		expect(result).toEqual(['a', 'c']);
 	});
 
-	it('uses {} fallback when locaisVisitados is absent from parsed JSON', () => {
-		// parsed.locaisVisitados is undefined → || {} kicks in (line 215 branch)
-		const noLocJson = `{"localizacaoAtual":"Forest","inventario":[],"objetivos":[],"coisasNaoExploradas":[],"observacoes":[],"ultimaAtualizacao":"2026-01-01T00:00:00.000Z"}`;
-		const text = `Dica.\nGAME_STATUS_JSON_START\n${noLocJson}\nGAME_STATUS_JSON_END`;
-		const result = parseAIResponse(text, fallback);
-		expect(result.updatedGameStatus.localizacaoAtual).toBe('Forest');
-		expect(result.updatedGameStatus.locaisVisitados).toEqual({});
+	it('UPDATE replaces note content by 1-based index', () => {
+		const result = applyMemoryOperations(['antiga', 'outra'], 'UPDATE 1 atualizada');
+		expect(result).toEqual(['atualizada', 'outra']);
 	});
 
-	it('correctly tracks escape sequences inside strings', () => {
-		// \\\\ in JS source = \\ in actual string = escaped backslash inside a JSON value.
-		// Forces the scanner through esc=true (line 241) and if(esc) (line 240).
-		const result = tryRepairAndParseJSON('{"key":"with \\\\ backslash","count":3');
-		expect(result).not.toBeNull();
-		expect((result as Record<string, unknown>).count).toBe(3);
+	it('handles mixed operations sequentially', () => {
+		const result = applyMemoryOperations(
+			['nota1', 'nota2', 'nota3'],
+			'REMOVE 2\nADD nova nota\nUPDATE 1 nota1 atualizada'
+		);
+		// After REMOVE 2: ['nota1', 'nota3']
+		// After ADD: ['nota1', 'nota3', 'nova nota']
+		// After UPDATE 1: ['nota1 atualizada', 'nota3', 'nova nota']
+		expect(result).toEqual(['nota1 atualizada', 'nota3', 'nova nota']);
 	});
 
-	it('handles a backslash outside a string (covers ch===\\\\ && !inStr branch)', () => {
-		// A lone backslash outside a string is invalid JSON but should not throw;
-		// it covers the ch==='\\' && inStr===false short-circuit path.
-		const result = tryRepairAndParseJSON('{"count":3\\');
-		// May or may not parse — what matters is no throw and the branch is exercised
-		// (either repaired or null is acceptable)
-		expect(() => tryRepairAndParseJSON('{"count":3\\')).not.toThrow();
+	it('ignores REMOVE with invalid index', () => {
+		const result = applyMemoryOperations(['a'], 'REMOVE 5');
+		expect(result).toEqual(['a']);
 	});
 
-	it('handles JSON with inner closed brackets (covers the ] decrement branch)', () => {
-		// The ']' closes the inner array (brackets--), then the outer '}' is missing.
-		// The string value is complete so the repair produces valid JSON.
-		const result = tryRepairAndParseJSON('{"arr":[1,2],"count":3');
-		expect(result).not.toBeNull();
-		expect((result as Record<string, unknown>).arr).toEqual([1, 2]);
-		expect((result as Record<string, unknown>).count).toBe(3);
+	it('ignores REMOVE with index 0 (out of 1-based range)', () => {
+		const result = applyMemoryOperations(['a'], 'REMOVE 0');
+		expect(result).toEqual(['a']);
 	});
 
-	it('handles nested objects correctly', () => {
-		expect(tryRepairAndParseJSON('{"a":{"b":1},"c":[1,2,3]}')).toEqual({ a: { b: 1 }, c: [1, 2, 3] });
+	it('ignores UPDATE with invalid index', () => {
+		const result = applyMemoryOperations(['a'], 'UPDATE 5 novo texto');
+		expect(result).toEqual(['a']);
+	});
+
+	it('returns same array for empty block', () => {
+		const result = applyMemoryOperations(['a', 'b'], '');
+		expect(result).toEqual(['a', 'b']);
+	});
+
+	it('does not mutate the original memory array', () => {
+		const original = ['a', 'b'];
+		const result = applyMemoryOperations(original, 'ADD c');
+		expect(original).toEqual(['a', 'b']);
+		expect(result).toEqual(['a', 'b', 'c']);
+	});
+
+	it('respects the 20-note maximum', () => {
+		const memory = Array.from({ length: 20 }, (_, i) => `nota ${i + 1}`);
+		const result = applyMemoryOperations(memory, 'ADD esta não entra');
+		expect(result).toHaveLength(20);
+	});
+
+	it('ignores unknown operation lines', () => {
+		const result = applyMemoryOperations(['a'], 'UNKNOWN something\nADD b');
+		expect(result).toEqual(['a', 'b']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildSystemPrompt
+// ---------------------------------------------------------------------------
+
+describe('buildSystemPrompt', () => {
+	it('includes the game name', () => {
+		const prompt = buildSystemPrompt('Zork', [], '');
+		expect(prompt).toContain('Zork');
+	});
+
+	it('includes numbered memory notes when present', () => {
+		const prompt = buildSystemPrompt('Zork', ['Estou na floresta', 'Tenho uma lanterna'], '');
+		expect(prompt).toContain('1. Estou na floresta');
+		expect(prompt).toContain('2. Tenho uma lanterna');
+	});
+
+	it('shows (vazio) when memory is empty', () => {
+		const prompt = buildSystemPrompt('Zork', [], '');
+		expect(prompt).toContain('(vazio)');
+	});
+
+	it('includes game history diff', () => {
+		const prompt = buildSystemPrompt('Zork', [], 'West of House\nYou are standing...');
+		expect(prompt).toContain('West of House');
 	});
 });
 
@@ -449,5 +431,84 @@ describe('PROVIDER_PRESETS', () => {
 		expect(gemini).toBeDefined();
 		expect(gemini!.requiresKey).toBe(true);
 		expect(gemini!.apiUrl).toContain('generativelanguage.googleapis.com');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// fetchAvailableModels
+// ---------------------------------------------------------------------------
+
+describe('fetchAvailableModels', () => {
+	it('returns empty array for lmstudio provider', async () => {
+		const result = await fetchAvailableModels('lmstudio', '');
+		expect(result).toEqual([]);
+	});
+
+	it('returns empty array for custom provider', async () => {
+		const result = await fetchAvailableModels('custom', '');
+		expect(result).toEqual([]);
+	});
+
+	it('returns empty array for unknown provider', async () => {
+		const result = await fetchAvailableModels('unknown', 'key');
+		expect(result).toEqual([]);
+	});
+
+	it('fetches gemini models and filters by generateContent', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: () => Promise.resolve({
+				models: [
+					{ name: 'models/gemma-3-27b', displayName: 'Gemma 3 27B', supportedGenerationMethods: ['generateContent'] },
+					{ name: 'models/text-embedding', displayName: 'Text Embedding', supportedGenerationMethods: ['embedContent'] }
+				]
+			})
+		});
+		vi.stubGlobal('fetch', mockFetch);
+
+		const result = await fetchAvailableModels('gemini', 'test-key');
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe('gemma-3-27b');
+		expect(result[0].name).toBe('Gemma 3 27B');
+	});
+
+	it('returns empty array when gemini API fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+		const result = await fetchAvailableModels('gemini', 'key');
+		expect(result).toEqual([]);
+	});
+
+	it('returns empty array for gemini without apiKey', async () => {
+		const result = await fetchAvailableModels('gemini', '');
+		expect(result).toEqual([]);
+	});
+
+	it('fetches openrouter models and filters :free', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: () => Promise.resolve({
+				data: [
+					{ id: 'google/gemma-3:free', name: 'Gemma 3 Free' },
+					{ id: 'openai/gpt-4o', name: 'GPT-4o' }
+				]
+			})
+		});
+		vi.stubGlobal('fetch', mockFetch);
+
+		const result = await fetchAvailableModels('openrouter', '');
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe('google/gemma-3:free');
+	});
+
+	it('returns empty array when openrouter API fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+		const result = await fetchAvailableModels('openrouter', '');
+		expect(result).toEqual([]);
+	});
+
+	it('returns empty array when fetch throws', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
+		const result = await fetchAvailableModels('gemini', 'key');
+		expect(result).toEqual([]);
 	});
 });

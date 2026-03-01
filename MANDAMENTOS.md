@@ -11,16 +11,17 @@
 - Todas as decisões devem estar alinhadas com os princípios aqui definidos
 - Em caso de dúvida, consulte este arquivo primeiro
 
-### 2️⃣ SEMPRE RECARREGUE PARTY-MODE APÓS COMPACTAÇÃO
-- Quando o Claude compactar a conversa, execute: `/bmad-party-mode`
-- Isso garante continuidade do contexto e dos agentes
-- Nunca prossiga sem recarregar o contexto adequado
-
-### 3️⃣ MEMÓRIA PERSISTENTE E FIDELIDADE ABSOLUTA
+### 2️⃣ MEMÓRIA PERSISTENTE E FIDELIDADE ABSOLUTA
 - Sempre consulte `MEMORIA-PROJETO.md` antes de fazer mudanças
 - Guarde todas as decisões importantes na memória
 - Nunca desvie do que está documentado sem discussão explícita com o dono do projeto
 - A memória do projeto é sagrada
+
+### 3️⃣ DOCUMENTAÇÃO DE SESSÕES
+- Cada sessão de desenvolvimento deve ser documentada em `docs/sessao-NN.md`
+- O arquivo deve conter: o que foi feito, decisões tomadas, bugs corrigidos, resultado
+- Ao final da sessão, adicionar o link na tabela de sessões em `MEMORIA-PROJETO.md`
+- Detalhes ficam nas sessões; `MEMORIA-PROJETO.md` fica enxuto com decisões e status
 
 ### 4️⃣ DOCUMENTAÇÃO CONTÍNUA
 - Toda decisão técnica relevante DEVE ser documentada em `MEMORIA-PROJETO.md`
@@ -43,12 +44,15 @@
 ### Início de cada sessão
 1. Ler `MANDAMENTOS.md` (este arquivo)
 2. Ler `MEMORIA-PROJETO.md`
-3. Se a conversa foi compactada: executar `/bmad-party-mode` **imediatamente**
 
 ### Durante o desenvolvimento
 - Atualizar `MEMORIA-PROJETO.md` com decisões importantes
 - Escrever testes junto com o código, não depois
 - Manter simplicidade — evitar over-engineering
+
+### Ao final da sessão
+- Criar/atualizar `docs/sessao-NN.md` com o que foi feito
+- Atualizar tabela de sessões em `MEMORIA-PROJETO.md`
 
 ### A cada commit/PR
 - Commits descritivos com Conventional Commits
@@ -76,5 +80,5 @@
 
 ---
 
-**Última atualização:** 2026-02-20
-**Versão:** 2.0
+**Última atualização:** 2026-03-01
+**Versão:** 3.0

@@ -3,16 +3,16 @@ import 'fake-indexeddb/auto';
 
 import { describe, it, expect } from 'vitest';
 import {
-	createEmptyGameStatus,
-	saveGameStatus,
-	loadGameStatus,
+	createEmptyMemory,
+	saveAIMemory,
+	loadAIMemory,
 	saveChatHistory,
 	loadChatHistory,
 	getSaveSlots,
 	writeSaveSlot,
 	deleteSaveSlot,
 	clearGameAIData,
-	type GameStatus,
+	type AIMemory,
 	type AIChatMessage,
 	type SaveSlot
 } from './aiPersistence';
@@ -20,15 +20,7 @@ import {
 // Each describe block uses a unique game name to avoid data collisions between
 // tests that share the same in-memory fake IndexedDB instance.
 
-const makeStatus = (loc: string): GameStatus => ({
-	localizacaoAtual: loc,
-	inventario: ['sword'],
-	objetivos: ['find treasure'],
-	coisasNaoExploradas: [],
-	observacoes: [],
-	locaisVisitados: {},
-	ultimaAtualizacao: '2026-01-01T00:00:00.000Z'
-});
+const makeMemory = (...notes: string[]): AIMemory => notes;
 
 const makeSlot = (slotName: string, gameName: string): SaveSlot => ({
 	slotName,
@@ -40,46 +32,38 @@ const makeSlot = (slotName: string, gameName: string): SaveSlot => ({
 });
 
 // ---------------------------------------------------------------------------
-// createEmptyGameStatus
+// createEmptyMemory
 // ---------------------------------------------------------------------------
 
-describe('createEmptyGameStatus', () => {
-	it('returns an object with empty arrays and empty string location', () => {
-		const status = createEmptyGameStatus();
-		expect(status.localizacaoAtual).toBe('');
-		expect(status.inventario).toEqual([]);
-		expect(status.objetivos).toEqual([]);
-		expect(status.locaisVisitados).toEqual({});
-	});
-
-	it('sets ultimaAtualizacao to a valid ISO date string', () => {
-		const status = createEmptyGameStatus();
-		expect(new Date(status.ultimaAtualizacao).toISOString()).toBe(status.ultimaAtualizacao);
+describe('createEmptyMemory', () => {
+	it('returns an empty array', () => {
+		const memory = createEmptyMemory();
+		expect(memory).toEqual([]);
 	});
 });
 
 // ---------------------------------------------------------------------------
-// saveGameStatus / loadGameStatus
+// saveAIMemory / loadAIMemory
 // ---------------------------------------------------------------------------
 
-describe('saveGameStatus / loadGameStatus', () => {
-	it('round-trips a game status', async () => {
-		const status = makeStatus('West of House');
-		await saveGameStatus('persist-game-1', status);
-		const loaded = await loadGameStatus('persist-game-1');
-		expect(loaded).toEqual(status);
+describe('saveAIMemory / loadAIMemory', () => {
+	it('round-trips AI memory', async () => {
+		const memory = makeMemory('Estou na floresta', 'Tenho uma lanterna');
+		await saveAIMemory('persist-game-1', memory);
+		const loaded = await loadAIMemory('persist-game-1');
+		expect(loaded).toEqual(memory);
 	});
 
 	it('returns undefined for a game that was never saved', async () => {
-		const result = await loadGameStatus('nonexistent-game-xyz-1');
+		const result = await loadAIMemory('nonexistent-game-xyz-1');
 		expect(result).toBeUndefined();
 	});
 
-	it('overwrites previous status for the same game', async () => {
-		await saveGameStatus('persist-game-2', makeStatus('Forest'));
-		await saveGameStatus('persist-game-2', makeStatus('Kitchen'));
-		const loaded = await loadGameStatus('persist-game-2');
-		expect(loaded?.localizacaoAtual).toBe('Kitchen');
+	it('overwrites previous memory for the same game', async () => {
+		await saveAIMemory('persist-game-2', makeMemory('nota antiga'));
+		await saveAIMemory('persist-game-2', makeMemory('nota nova'));
+		const loaded = await loadAIMemory('persist-game-2');
+		expect(loaded).toEqual(['nota nova']);
 	});
 });
 
@@ -139,6 +123,13 @@ describe('writeSaveSlot / getSaveSlots', () => {
 		const slots = await getSaveSlots('slots-game-3');
 		expect(slots['overwrite-me'].gameHistory).toEqual(['updated']);
 	});
+
+	it('stores aiMemory in save slot', async () => {
+		const slot: SaveSlot = { ...makeSlot('with-memory', 'slots-game-4'), aiMemory: ['nota1', 'nota2'] };
+		await writeSaveSlot('slots-game-4', slot);
+		const slots = await getSaveSlots('slots-game-4');
+		expect(slots['with-memory'].aiMemory).toEqual(['nota1', 'nota2']);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -147,7 +138,6 @@ describe('writeSaveSlot / getSaveSlots', () => {
 
 describe('deleteSaveSlot', () => {
 	it('is a no-op for a slot that does not exist (covers ?? {} fallback)', async () => {
-		// game-never-saved has no entry in gameSaves — db.get() returns undefined → ?? {}
 		await expect(deleteSaveSlot('game-never-saved', 'ghost-slot')).resolves.toBeUndefined();
 		const slots = await getSaveSlots('game-never-saved');
 		expect(Object.keys(slots)).toHaveLength(0);
@@ -175,11 +165,11 @@ describe('deleteSaveSlot', () => {
 // ---------------------------------------------------------------------------
 
 describe('clearGameAIData', () => {
-	it('removes game status and chat history for a game', async () => {
-		await saveGameStatus('clear-game-1', makeStatus('Forest'));
+	it('removes AI memory and chat history for a game', async () => {
+		await saveAIMemory('clear-game-1', makeMemory('nota'));
 		await saveChatHistory('clear-game-1', [{ role: 'user', content: 'hi', timestamp: 1 }]);
 		await clearGameAIData('clear-game-1');
-		expect(await loadGameStatus('clear-game-1')).toBeUndefined();
+		expect(await loadAIMemory('clear-game-1')).toBeUndefined();
 		expect(await loadChatHistory('clear-game-1')).toEqual([]);
 	});
 });

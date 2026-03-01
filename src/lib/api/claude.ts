@@ -6,12 +6,11 @@
  *
  * Default: connects to LM Studio at localhost:55511
  *
- * Response format: The AI returns a natural language message followed by a
- * fenced JSON block (```game-status ... ```) containing the updated game status.
- * The parser separates these two parts.
+ * Response format: The AI returns a natural language message optionally followed
+ * by a MEMORY_UPDATE block containing ADD/REMOVE/UPDATE operations on a list of notes.
  */
 
-import type { GameStatus } from '../stores/aiPersistence';
+import type { AIMemory } from '../stores/aiPersistence';
 
 /** Model option for provider dropdown */
 export interface ModelOption {
@@ -73,10 +72,13 @@ const DEFAULT_API_URL = 'http://localhost:55511/v1/chat/completions';
 /** Default model name (overridden by provider presets) */
 const DEFAULT_MODEL = 'local-model';
 
-/** Parsed AI response: visible chat message + structured game status update */
+/** Maximum number of notes the AI memory can hold */
+const MAX_MEMORY_NOTES = 20;
+
+/** Parsed AI response: visible chat message + updated memory */
 export interface AIResponse {
 	message: string;
-	updatedGameStatus: GameStatus;
+	updatedMemory: AIMemory;
 }
 
 /** Callback invoked during streaming with the accumulated text so far */
@@ -85,30 +87,28 @@ export type StreamCallback = (partialText: string) => void;
 /**
  * Send a message to the AI with streaming response via OpenAI-compatible API.
  *
- * Works with LM Studio, Ollama, OpenAI, or any OpenAI-compatible endpoint.
- *
  * @param apiKey - API key (optional for local servers like LM Studio)
  * @param conversationHistory - Previous messages in the chat (user + assistant)
  * @param gameHistoryDiff - New game output since last AI interaction
- * @param currentGameStatus - Current structured game status
+ * @param currentMemory - Current AI memory notes
  * @param gameName - Name of the game being played
  * @param onStream - Callback for streaming partial responses
  * @param apiUrl - Override the API endpoint URL
  * @param model - Model name to use (defaults to 'local-model')
- * @returns Parsed response with chat message and updated game status
+ * @returns Parsed response with chat message and updated memory
  */
 export async function sendToAIStreaming(
 	apiKey: string,
 	conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
 	gameHistoryDiff: string,
-	currentGameStatus: GameStatus,
+	currentMemory: AIMemory,
 	gameName: string,
 	onStream: StreamCallback,
 	apiUrl: string = DEFAULT_API_URL,
 	model: string = DEFAULT_MODEL,
 	signal?: AbortSignal
 ): Promise<AIResponse> {
-	const systemPrompt = buildSystemPrompt(gameName, currentGameStatus, gameHistoryDiff);
+	const systemPrompt = buildSystemPrompt(gameName, currentMemory, gameHistoryDiff);
 
 	// Gemma não suporta system role — injeta como primeira mensagem user
 	const supportsSystem = !model.toLowerCase().includes('gemma');
@@ -116,8 +116,6 @@ export async function sendToAIStreaming(
 		? [{ role: 'system', content: systemPrompt }, ...conversationHistory]
 		: [{ role: 'user', content: `[Instruções]\n${systemPrompt}` }, { role: 'assistant', content: 'Entendido, vou seguir essas instruções.' }, ...conversationHistory];
 
-	// Build request body — 2048 tokens gives enough room for the response
-	// plus the GAME_STATUS_JSON block that the AI appends at the end
 	const requestBody = {
 		model,
 		messages,
@@ -206,7 +204,7 @@ export async function sendToAIStreaming(
 		reader.releaseLock();
 	}
 
-	return parseAIResponse(fullResponse, currentGameStatus);
+	return parseAIResponse(fullResponse, currentMemory);
 }
 
 /**
@@ -215,131 +213,108 @@ export async function sendToAIStreaming(
  * The prompt instructs the AI to:
  * 1. Act as a helpful text adventure assistant (in PT-BR)
  * 2. Analyze the game output diff
- * 3. Return an updated game status JSON block at the end of each response
+ * 3. Optionally return memory update operations at the end of each response
  */
-function buildSystemPrompt(
+/** @internal Exported for unit testing */
+export function buildSystemPrompt(
 	gameName: string,
-	gameStatus: GameStatus,
+	memory: AIMemory,
 	gameHistoryDiff: string
 ): string {
+	const memorySection = memory.length > 0
+		? memory.map((note, i) => `${i + 1}. ${note}`).join('\n')
+		: '(vazio)';
+
 	return `Voce e um assistente para jogos de aventura em texto (interactive fiction). O jogador esta jogando "${gameName}".
 
 Seu papel:
 - Ajudar o jogador quando ele pedir dicas ou sugestoes
-- Analisar a saida do jogo e manter um status atualizado do progresso
+- Analisar a saida do jogo e manter anotacoes sobre o progresso
 - Responder em portugues do Brasil
 - Ser conciso e util, sem dar spoilers desnecessarios
 - Sugerir comandos validos do jogo quando apropriado (look, examine, go north, take, etc.)
-- Se o jogador perguntar algo generico, use o status do jogo como contexto
+- Se o jogador perguntar algo generico, use suas anotacoes como contexto
 
 CONTEXTO DO JOGO - Novidades desde a ultima interacao:
 ${gameHistoryDiff || '(nenhuma novidade no jogo ainda)'}
 
-STATUS ATUAL DO JOGO (mantido por voce):
-${JSON.stringify(gameStatus, null, 2)}
+SUAS ANOTACOES (caderno de notas que voce mantem sobre o jogo):
+${memorySection}
 
-INSTRUCAO IMPORTANTE: Ao final de CADA resposta, adicione EXATAMENTE este bloco. NAO mencione o bloco nem fale sobre ele na sua resposta visivel — apenas inclua-o em silencio ao final:
+INSTRUCAO SOBRE ANOTACOES: Ao final da resposta, voce PODE incluir um bloco de atualizacao de anotacoes. Se nao houver nada para atualizar, NAO inclua o bloco. Use o formato:
 
-GAME_STATUS_JSON_START
-{"localizacaoAtual":"nome exato do local atual","inventario":["item1","item2"],"objetivos":["obj1"],"coisasNaoExploradas":["algo nao examinado"],"observacoes":["nota util"],"locaisVisitados":{}}
-GAME_STATUS_JSON_END
+MEMORY_UPDATE_START
+ADD texto da nova nota
+REMOVE 3
+UPDATE 1 texto atualizado da nota
+MEMORY_UPDATE_END
 
-Regras obrigatorias:
-- NAO escreva "O status do jogo agora e:" nem qualquer introducao antes do bloco
-- Use GAME_STATUS_JSON_START e GAME_STATUS_JSON_END como delimitadores (NAO use crases)
-- O JSON em UMA UNICA LINHA entre os delimitadores
-- Atualize localizacaoAtual com o nome real do local onde o jogador esta agora
-- SEMPRE inclua o bloco ao final de cada resposta
-
-Regras para o campo locaisVisitados:
-- Para cada local visitado, adicione uma entrada. Exemplo de formato:
-  "West of House": {"saidas": {"north": "nao explorado", "east": "nao explorado"}, "notas": ["mailbox aqui"]}
-- saidas: mapeie direcoes para o nome do destino (se ja visitado) ou "nao explorado"
-- notas: itens no chao, portas trancadas, estados importantes do local
-- NUNCA remova locais ja registrados no status atual — apenas adicione ou atualize`;
-
+Regras:
+- ADD: adiciona uma nova nota ao final da lista (maximo ${MAX_MEMORY_NOTES} notas)
+- REMOVE N: remove a nota numero N (os indices se reajustam apos cada operacao)
+- UPDATE N texto: substitui o conteudo da nota numero N
+- As operacoes sao processadas sequencialmente (REMOVE altera os indices)
+- NAO mencione o bloco de anotacoes na sua resposta visivel
+- Use anotacoes para guardar: localizacao atual, inventario, objetivos, locais visitados, coisas importantes`;
 }
 
 /**
- * Parse AI response to extract the visible message and the game status JSON.
+ * Parse AI response to extract the visible message and apply memory operations.
  *
- * The AI appends a GAME_STATUS_JSON_START...GAME_STATUS_JSON_END block at the end.
- * We extract it, parse the JSON, and return the clean message separately.
- *
- * The block is ALWAYS stripped from the visible message, even if JSON parsing fails,
- * so the user never sees raw JSON in the chat.
+ * The AI may append a MEMORY_UPDATE_START...MEMORY_UPDATE_END block at the end.
+ * We extract it, apply the operations, and return the clean message separately.
  */
 /** @internal Exported for unit testing */
-export function parseAIResponse(fullText: string, fallbackStatus: GameStatus): AIResponse {
-	// Try multiple patterns that LLMs might use for the status block
-	const patterns = [
-		/GAME_STATUS_JSON_START\s*([\s\S]*?)\s*GAME_STATUS_JSON_END/,
-		/```game-status\s*\n([\s\S]*?)\n```/,
-		/```json\s*\n([\s\S]*?)\n```\s*$/,
-		/```\s*\n(\{[\s\S]*?"localizacaoAtual"[\s\S]*?\})\s*\n```/
-	];
+export function parseAIResponse(fullText: string, currentMemory: AIMemory): AIResponse {
+	const regex = /MEMORY_UPDATE_START\s*([\s\S]*?)\s*MEMORY_UPDATE_END/;
+	const match = fullText.match(regex);
 
-	let updatedGameStatus = fallbackStatus;
-	let message = fullText;
+	if (!match) {
+		return { message: fullText.trim(), updatedMemory: currentMemory };
+	}
 
-	for (const regex of patterns) {
-		const match = fullText.match(regex);
-		if (match) {
-			// Sempre remove o bloco da mensagem visível, independente de parsing
-			message = fullText.replace(regex, '').trim();
+	const message = fullText.replace(regex, '').trim();
+	const updatedMemory = applyMemoryOperations(currentMemory, match[1].trim());
 
-			const parsed = tryRepairAndParseJSON(match[1].trim());
-			if (parsed && (parsed.localizacaoAtual !== undefined || parsed.inventario !== undefined)) {
-				updatedGameStatus = {
-					...fallbackStatus,
-					...parsed,
-					// Merge locaisVisitados additivamente — nunca apaga dados existentes
-					locaisVisitados: {
-						...fallbackStatus.locaisVisitados,
-						...(parsed.locaisVisitados || {})
-					},
-					ultimaAtualizacao: new Date().toISOString()
-				};
+	return { message, updatedMemory };
+}
+
+/**
+ * Apply ADD/REMOVE/UPDATE operations to the memory.
+ * Operations are processed sequentially — REMOVE shifts indices.
+ */
+/** @internal Exported for unit testing */
+export function applyMemoryOperations(memory: AIMemory, block: string): AIMemory {
+	if (!block) return memory;
+
+	const result = [...memory];
+	const lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+	for (const line of lines) {
+		if (line.startsWith('ADD ')) {
+			const text = line.slice(4).trim();
+			if (text && result.length < MAX_MEMORY_NOTES) {
+				result.push(text);
 			}
-			break;
+		} else if (line.startsWith('REMOVE ')) {
+			const idx = parseInt(line.slice(7).trim(), 10) - 1; // 1-based → 0-based
+			if (idx >= 0 && idx < result.length) {
+				result.splice(idx, 1);
+			}
+		} else if (line.startsWith('UPDATE ')) {
+			const rest = line.slice(7).trim();
+			const spaceIdx = rest.indexOf(' ');
+			if (spaceIdx > 0) {
+				const idx = parseInt(rest.slice(0, spaceIdx), 10) - 1; // 1-based → 0-based
+				const text = rest.slice(spaceIdx + 1).trim();
+				if (idx >= 0 && idx < result.length && text) {
+					result[idx] = text;
+				}
+			}
 		}
 	}
 
-	return { message, updatedGameStatus };
-}
-
-/**
- * Tenta fazer parse de um JSON, e se falhar, tenta reparar fechando chaves/colchetes
- * abertos (modelos pequenos às vezes truncam o JSON no final).
- */
-/** @internal Exported for unit testing */
-export function tryRepairAndParseJSON(s: string): Record<string, unknown> | null {
-	// Tenta primeiro como está
-	try { return JSON.parse(s); } catch {}
-
-	// Conta chaves e colchetes não fechados para reparar JSON truncado
-	let braces = 0, brackets = 0;
-	let inStr = false, esc = false;
-	for (const ch of s) {
-		if (esc) { esc = false; continue; }
-		if (ch === '\\' && inStr) { esc = true; continue; }
-		if (ch === '"') { inStr = !inStr; continue; }
-		if (inStr) continue;
-		if (ch === '{') braces++;
-		else if (ch === '}') braces = Math.max(0, braces - 1);
-		else if (ch === '[') brackets++;
-		else if (ch === ']') brackets = Math.max(0, brackets - 1);
-	}
-
-	const repaired = s + ']'.repeat(brackets) + '}'.repeat(braces);
-	try {
-		const result = JSON.parse(repaired);
-		console.info('Repaired truncated JSON from AI response');
-		return result;
-	} catch {}
-
-	console.warn('Failed to parse game status JSON even after repair attempt');
-	return null;
+	return result;
 }
 
 /**

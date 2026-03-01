@@ -9,7 +9,7 @@
 	import { slide } from 'svelte/transition';
 	import {
 		aiMessages,
-		aiGameStatus,
+		aiMemory,
 		aiIsLoading,
 		aiIsStreaming,
 		aiStreamingContent,
@@ -17,18 +17,15 @@
 		aiChat,
 		aiProviderId,
 		aiApiUrl,
-		aiModel,
-		locationMapExpanded
+		aiModel
 	} from '$lib/stores/aiChat';
 	import { PROVIDER_PRESETS, fetchAvailableModels } from '$lib/api/claude';
 	import type { ModelOption } from '$lib/api/claude';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
-	import LocationMap from './LocationMap.svelte';
 
 	let messageInput = '';
 	let messagesContainer: HTMLDivElement;
-	let showGameStatus = false;
-	let showLocationMap = false;
+	let showMemoryPanel = false;
 	let showSettings = false;
 	let debugMode = false;
 
@@ -85,16 +82,6 @@
 	$: currentPreset = PROVIDER_PRESETS.find((p) => p.id === $aiProviderId);
 	$: providerRequiresKey = currentPreset?.requiresKey ?? false;
 
-	// Quando o mapa expande para terceira coluna, fecha o modo inline
-	$: if ($locationMapExpanded) showLocationMap = false;
-
-	function toggleLocationMap() {
-		showLocationMap = !showLocationMap;
-		if (!showLocationMap && $locationMapExpanded) {
-			locationMapExpanded.set(false);
-		}
-	}
-
 	onMount(() => {
 		aiChat.initAIChat();
 	});
@@ -103,22 +90,18 @@
 		aiChat.loadAIStateForGame($currentGameName);
 	}
 
-	/** Detecta quando o streaming está na fase de receber o JSON de status (invisível ao usuário) */
-	$: isUpdatingStatus = $aiIsStreaming && $aiStreamingContent.includes('GAME_STATUS_JSON_START');
+	/** Detecta quando o streaming está na fase de receber o bloco de memória (invisível ao usuário) */
+	$: isUpdatingMemory = $aiIsStreaming && $aiStreamingContent.includes('MEMORY_UPDATE_START');
 
 	// ---- Typewriter effect ----
-	// The actual streaming content arrives in large chunks (especially from Gemini).
-	// We reveal it gradually via a display buffer that catches up using requestAnimationFrame.
 	let displayedStreamText = '';
 	let typewriterRaf = 0;
-	/** How many characters to reveal per animation frame */
 	const CHARS_PER_FRAME = 3;
 
 	$: if ($aiStreamingContent) {
 		startTypewriter();
 	}
 
-	// Reset when streaming ends
 	$: if (!$aiIsStreaming) {
 		cancelAnimationFrame(typewriterRaf);
 		typewriterRaf = 0;
@@ -126,7 +109,7 @@
 	}
 
 	function startTypewriter() {
-		if (typewriterRaf) return; // already running
+		if (typewriterRaf) return;
 		typewriterRaf = requestAnimationFrame(typewriterTick);
 	}
 
@@ -137,11 +120,9 @@
 			return;
 		}
 		if (displayedStreamText.length < target.length) {
-			// Reveal a few characters per frame for smooth animation
 			displayedStreamText = target.slice(0, displayedStreamText.length + CHARS_PER_FRAME);
 			typewriterRaf = requestAnimationFrame(typewriterTick);
 		} else {
-			// Caught up — wait for more content
 			typewriterRaf = 0;
 		}
 	}
@@ -171,36 +152,28 @@
 	}
 
 	/**
-	 * Remove o bloco JSON de game-status do conteúdo em streaming.
-	 * O bloco aparece no final da resposta e não deve ser exibido ao usuário.
+	 * Remove o bloco de memória do conteúdo em streaming.
 	 */
-	function stripStatusBlock(text: string): string {
+	function stripMemoryBlock(text: string): string {
 		return text
-			.replace(/GAME_STATUS_JSON_START[\s\S]*$/m, '')
-			.replace(/```game-status[\s\S]*$/m, '')
-			.replace(/```json\s*\n\{[\s\S]*$/m, '')
+			.replace(/MEMORY_UPDATE_START[\s\S]*$/m, '')
 			.trim();
 	}
 
 	/**
 	 * Converte markdown básico para HTML seguro (sem XSS).
-	 * Escapa entidades HTML antes de aplicar as transformações.
-	 * Suporta: negrito, itálico, código inline, listas (- e 1.), quebras de linha.
 	 */
 	function renderMarkdown(raw: string): string {
-		// 1. Escapar entidades HTML (prevenção de XSS)
 		let s = raw
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 
-		// 2. Inline: negrito+itálico, negrito, itálico, código
 		s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
 		s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 		s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
 		s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
 
-		// 3. Processar linha a linha para listas e parágrafos
 		const lines = s.split('\n');
 		const out: string[] = [];
 		let inUl = false;
@@ -245,24 +218,16 @@
 		<div class="header-controls">
 			<button
 				class="btn-icon"
-				class:active={showGameStatus}
-				on:click={() => (showGameStatus = !showGameStatus)}
-				title="Status do jogo"
+				class:active={showMemoryPanel}
+				on:click={() => (showMemoryPanel = !showMemoryPanel)}
+				title="Anotações da IA"
 			>
-				📋
-			</button>
-			<button
-				class="btn-icon"
-				class:active={showLocationMap || $locationMapExpanded}
-				on:click={toggleLocationMap}
-				title="Mapa de locais"
-			>
-				🗺️
+				📝
 			</button>
 			<button
 				class="btn-icon"
 				on:click={() => aiChat.clearChatMessages()}
-				title="Limpar chat (mantém status do jogo)"
+				title="Limpar chat (mantém anotações)"
 				disabled={$aiMessages.length === 0}
 			>
 				🗑️
@@ -356,64 +321,18 @@
 		</div>
 	{/if}
 
-	<!-- Painel de status do jogo (colapsável) -->
-	{#if showGameStatus}
-		<div class="game-status-panel" transition:slide={{ duration: 200 }}>
-			<div class="status-section">
-				<h4>📍 Localização</h4>
-				<p>{$aiGameStatus.localizacaoAtual || 'Desconhecida'}</p>
-			</div>
-
-			{#if $aiGameStatus.inventario.length > 0}
-				<div class="status-section">
-					<h4>🎒 Inventário</h4>
-					<ul>
-						{#each $aiGameStatus.inventario as item}
-							<li>{item}</li>
-						{/each}
-					</ul>
-				</div>
+	<!-- Painel de anotações da IA (colapsável) -->
+	{#if showMemoryPanel}
+		<div class="memory-panel" transition:slide={{ duration: 200 }}>
+			{#if $aiMemory.length === 0}
+				<p class="memory-empty">Nenhuma anotação ainda. A IA criará notas conforme vocês conversam.</p>
+			{:else}
+				<ol class="memory-list">
+					{#each $aiMemory as note}
+						<li>{note}</li>
+					{/each}
+				</ol>
 			{/if}
-
-			{#if $aiGameStatus.objetivos.length > 0}
-				<div class="status-section">
-					<h4>🎯 Objetivos</h4>
-					<ul>
-						{#each $aiGameStatus.objetivos as obj}
-							<li>{obj}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-
-			{#if $aiGameStatus.coisasNaoExploradas.length > 0}
-				<div class="status-section">
-					<h4>🔍 Não explorado</h4>
-					<ul>
-						{#each $aiGameStatus.coisasNaoExploradas as coisa}
-							<li>{coisa}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-
-			{#if $aiGameStatus.observacoes.length > 0}
-				<div class="status-section">
-					<h4>📝 Observações</h4>
-					<ul>
-						{#each $aiGameStatus.observacoes as obs}
-							<li>{obs}</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
-	<!-- Mapa inline (oculto quando expandido para terceira coluna) -->
-	{#if showLocationMap && !$locationMapExpanded}
-		<div class="location-map-panel" transition:slide={{ duration: 200 }}>
-			<LocationMap expanded={false} />
 		</div>
 	{/if}
 
@@ -442,7 +361,6 @@
 			<div class="message {msg.role}">
 				<div class="message-content">
 					{#if msg.role === 'assistant'}
-						<!-- Renderiza markdown nas respostas do assistente -->
 						{@html renderMarkdown(msg.content)}
 					{:else}
 						{msg.content}
@@ -455,28 +373,28 @@
 		{#if $aiIsStreaming && displayedStreamText}
 			<div class="message assistant streaming">
 				<div class="message-content">
-					{@html renderMarkdown(stripStatusBlock(displayedStreamText))}{#if !isUpdatingStatus}<span class="cursor">▊</span>{/if}
+					{@html renderMarkdown(stripMemoryBlock(displayedStreamText))}{#if !isUpdatingMemory}<span class="cursor">▊</span>{/if}
 				</div>
-				{#if isUpdatingStatus}
-					<div class="status-updating">
+				{#if isUpdatingMemory}
+					<div class="memory-updating">
 						<span class="status-dot"></span>
 						<span class="status-dot"></span>
 						<span class="status-dot"></span>
-						Atualizando status do jogo...
+						Atualizando anotações...
 					</div>
 				{/if}
 			</div>
 		{/if}
 
-		<!-- Debug: game status JSON atualizado -->
+		<!-- Debug: AI memory -->
 		{#if debugMode && !$aiIsStreaming && $aiMessages.length > 0}
 			<div class="debug-block">
-				<div class="debug-header">🐛 Game Status (debug)</div>
-				<pre class="debug-json">{JSON.stringify($aiGameStatus, null, 2)}</pre>
+				<div class="debug-header">🐛 AI Memory (debug)</div>
+				<pre class="debug-json">{JSON.stringify($aiMemory, null, 2)}</pre>
 			</div>
 		{/if}
 
-		<!-- Debug: raw streaming (mostra o JSON block antes de ser stripado) -->
+		<!-- Debug: raw streaming -->
 		{#if debugMode && $aiIsStreaming && $aiStreamingContent}
 			<div class="debug-block">
 				<div class="debug-header">🐛 Raw stream</div>
@@ -728,8 +646,8 @@
 		letter-spacing: normal;
 	}
 
-	/* ---- Painel de status do jogo ---- */
-	.game-status-panel {
+	/* ---- Painel de anotações da IA ---- */
+	.memory-panel {
 		background: var(--bg-panel);
 		border-bottom: 1px solid var(--border);
 		padding: 0.75rem 1.5rem;
@@ -738,47 +656,22 @@
 		flex-shrink: 0;
 	}
 
-	.status-section {
-		margin-bottom: 0.75rem;
-	}
-
-	.status-section:last-child {
-		margin-bottom: 0;
-	}
-
-	.status-section h4 {
-		color: var(--accent);
-		font-size: 0.82rem;
-		margin: 0 0 0.2rem 0;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.status-section p {
-		color: var(--text-primary);
+	.memory-empty {
+		color: var(--text-faint);
+		font-size: 0.85rem;
 		margin: 0;
-		font-size: 0.88rem;
+		font-style: italic;
 	}
 
-	.status-section ul {
+	.memory-list {
 		margin: 0;
-		padding-left: 1.2rem;
+		padding-left: 1.4rem;
 		color: var(--text-primary);
 		font-size: 0.85rem;
 	}
 
-	.status-section li {
-		margin-bottom: 0.15rem;
-	}
-
-	/* ---- Mapa inline ---- */
-	.location-map-panel {
-		border-bottom: 1px solid var(--border);
-		max-height: 280px;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		flex-shrink: 0;
+	.memory-list li {
+		margin-bottom: 0.25rem;
 	}
 
 	/* ---- Área de mensagens ---- */
@@ -881,7 +774,6 @@
 		opacity: 0.95;
 	}
 
-	/* Estilos para conteúdo markdown renderizado nas mensagens do assistente */
 	.message.assistant :global(strong) {
 		color: var(--msg-strong);
 		font-weight: 700;
@@ -923,8 +815,8 @@
 		51%, 100% { opacity: 0; }
 	}
 
-	/* ---- Indicador de atualização de status ---- */
-	.status-updating {
+	/* ---- Indicador de atualização de memória ---- */
+	.memory-updating {
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;

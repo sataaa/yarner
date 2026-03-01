@@ -174,15 +174,15 @@ export async function restartGame(): Promise<void> {
 /**
  * Save the current game state to a named slot in IndexedDB.
  * Takes a full VM snapshot via GameEngine.saveSnapshot() and persists it
- * alongside the current game output, the original game file, and the AI status.
+ * alongside the current game output, the original game file, and the AI memory.
  *
  * @param slotName - Name for the save slot
- * @param aiGameStatus - Current AI game status (location, inventory, map, etc.)
+ * @param aiMemory - Current AI memory notes
  * @param aiChatMessages - Current AI chat messages
  */
 export async function saveGame(
 	slotName: string,
-	aiGameStatus?: import('./aiPersistence').GameStatus,
+	aiMemory?: import('./aiPersistence').AIMemory,
 	aiChatMessages?: import('./aiPersistence').AIChatMessage[]
 ): Promise<void> {
 	const state = get(gameStateStore);
@@ -203,7 +203,7 @@ export async function saveGame(
 		snapshot,
 		gameHistory: [...state.gameHistory],
 		gameData: state.gameData,
-		aiGameStatus,
+		aiMemory,
 		aiChatMessages
 	};
 

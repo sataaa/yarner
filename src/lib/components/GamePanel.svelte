@@ -10,7 +10,7 @@
 	import { slide } from 'svelte/transition';
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
-	import { aiChat, aiGameStatus, aiMessages } from '$lib/stores/aiChat';
+	import { aiChat, aiMemory, aiMessages } from '$lib/stores/aiChat';
 
 	export let gameName: string = '';
 
@@ -218,7 +218,7 @@
 		isSaving = true;
 		try {
 			// Inclui o status e chat da IA no slot para restaurar junto com o jogo
-			await gameState.saveGame(name, $aiGameStatus, $aiMessages);
+			await gameState.saveGame(name, $aiMemory, $aiMessages);
 			showSavePanel = false;
 			saveSlotName = '';
 			showFeedback(`Salvo: "${name}"`);
@@ -245,7 +245,7 @@
 			// Persiste o estado da IA do slot no IndexedDB ANTES de carregar o jogo.
 			// Isso evita race condition: loadFromSaveSlot faz isLoaded=true que
 			// dispara o reactive loadAIStateForGame — que agora encontra os dados corretos.
-			await aiChat.restoreAIStatusFromSave(slot.aiGameStatus, slot.gameHistory.length, slot.aiChatMessages);
+			await aiChat.restoreAIMemoryFromSave(slot.aiMemory, slot.gameHistory.length, slot.aiChatMessages);
 			await gameState.loadFromSaveSlot(slot);
 			commandHistory = [];
 			historyIndex = -1;
