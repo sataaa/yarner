@@ -12,9 +12,16 @@ import {
 	writeSaveSlot,
 	deleteSaveSlot,
 	clearGameAIData,
+	computeSHA256,
+	addGameToLibrary,
+	getGameLibrary,
+	getGameFromLibrary,
+	removeGameFromLibrary,
+	updateLastPlayed,
 	type AIMemory,
 	type AIChatMessage,
-	type SaveSlot
+	type SaveSlot,
+	type GameLibraryEntry
 } from './aiPersistence';
 
 // Each describe block uses a unique game name to avoid data collisions between
@@ -171,5 +178,123 @@ describe('clearGameAIData', () => {
 		await clearGameAIData('clear-game-1');
 		expect(await loadAIMemory('clear-game-1')).toBeUndefined();
 		expect(await loadChatHistory('clear-game-1')).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// computeSHA256
+// ---------------------------------------------------------------------------
+
+const makeLibraryEntry = (sha256: string, gameName: string, lastPlayed?: string): GameLibraryEntry => ({
+	sha256,
+	filename: `${gameName}.z5`,
+	gameName,
+	fileSize: 128,
+	addedDate: '2026-01-01T00:00:00.000Z',
+	lastPlayed: lastPlayed ?? '2026-01-01T00:00:00.000Z',
+	gameData: new ArrayBuffer(128)
+});
+
+describe('computeSHA256', () => {
+	it('returns consistent hash for the same input', async () => {
+		const data = new Uint8Array([1, 2, 3, 4]).buffer;
+		const hash1 = await computeSHA256(data);
+		const hash2 = await computeSHA256(data);
+		expect(hash1).toBe(hash2);
+		expect(hash1).toHaveLength(64); // SHA-256 = 64 hex chars
+	});
+
+	it('returns different hashes for different inputs', async () => {
+		const a = new Uint8Array([1, 2, 3]).buffer;
+		const b = new Uint8Array([4, 5, 6]).buffer;
+		expect(await computeSHA256(a)).not.toBe(await computeSHA256(b));
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Game Library CRUD
+// ---------------------------------------------------------------------------
+
+describe('addGameToLibrary / getGameLibrary', () => {
+	it('round-trips a library entry', async () => {
+		const entry = makeLibraryEntry('sha-lib-1', 'zork');
+		await addGameToLibrary(entry);
+		const lib = await getGameLibrary();
+		const found = lib.find(e => e.sha256 === 'sha-lib-1');
+		expect(found).toBeDefined();
+		expect(found!.gameName).toBe('zork');
+	});
+
+	it('upserts on same SHA (deduplication)', async () => {
+		const entry1 = makeLibraryEntry('sha-lib-dedup', 'zork');
+		const entry2 = { ...makeLibraryEntry('sha-lib-dedup', 'zork'), lastPlayed: '2026-06-01T00:00:00.000Z' };
+		await addGameToLibrary(entry1);
+		await addGameToLibrary(entry2);
+		const lib = await getGameLibrary();
+		const matches = lib.filter(e => e.sha256 === 'sha-lib-dedup');
+		expect(matches).toHaveLength(1);
+		expect(matches[0].lastPlayed).toBe('2026-06-01T00:00:00.000Z');
+	});
+
+	it('returns entries sorted by lastPlayed descending', async () => {
+		await addGameToLibrary(makeLibraryEntry('sha-lib-old', 'old-game', '2025-01-01T00:00:00.000Z'));
+		await addGameToLibrary(makeLibraryEntry('sha-lib-new', 'new-game', '2026-12-01T00:00:00.000Z'));
+		const lib = await getGameLibrary();
+		const oldIdx = lib.findIndex(e => e.sha256 === 'sha-lib-old');
+		const newIdx = lib.findIndex(e => e.sha256 === 'sha-lib-new');
+		expect(newIdx).toBeLessThan(oldIdx);
+	});
+});
+
+describe('getGameFromLibrary', () => {
+	it('returns entry by SHA-256', async () => {
+		await addGameToLibrary(makeLibraryEntry('sha-lib-get', 'hitchhiker'));
+		const entry = await getGameFromLibrary('sha-lib-get');
+		expect(entry).toBeDefined();
+		expect(entry!.gameName).toBe('hitchhiker');
+	});
+
+	it('returns undefined for nonexistent SHA', async () => {
+		const entry = await getGameFromLibrary('nonexistent-sha-xyz');
+		expect(entry).toBeUndefined();
+	});
+});
+
+describe('removeGameFromLibrary', () => {
+	it('removes entry by SHA-256', async () => {
+		await addGameToLibrary(makeLibraryEntry('sha-lib-remove', 'planetfall'));
+		await removeGameFromLibrary('sha-lib-remove');
+		const entry = await getGameFromLibrary('sha-lib-remove');
+		expect(entry).toBeUndefined();
+	});
+
+	it('also removes saves, AI memory and chat history for that game', async () => {
+		const gameName = 'cascade-game';
+		await addGameToLibrary(makeLibraryEntry('sha-lib-cascade', gameName));
+		await saveAIMemory(gameName, makeMemory('nota'));
+		await saveChatHistory(gameName, [{ role: 'user', content: 'hi', timestamp: 1 }]);
+		await writeSaveSlot(gameName, makeSlot('slot1', gameName));
+
+		await removeGameFromLibrary('sha-lib-cascade');
+
+		expect(await getGameFromLibrary('sha-lib-cascade')).toBeUndefined();
+		expect(await loadAIMemory(gameName)).toBeUndefined();
+		expect(await loadChatHistory(gameName)).toEqual([]);
+		expect(await getSaveSlots(gameName)).toEqual({});
+	});
+});
+
+describe('updateLastPlayed', () => {
+	it('updates the lastPlayed timestamp', async () => {
+		await addGameToLibrary(makeLibraryEntry('sha-lib-update', 'enchanter', '2025-01-01T00:00:00.000Z'));
+		await updateLastPlayed('sha-lib-update');
+		const entry = await getGameFromLibrary('sha-lib-update');
+		expect(entry).toBeDefined();
+		// O lastPlayed agora deve ser mais recente
+		expect(entry!.lastPlayed > '2025-01-01T00:00:00.000Z').toBe(true);
+	});
+
+	it('is a no-op for nonexistent SHA', async () => {
+		await expect(updateLastPlayed('ghost-sha-xyz')).resolves.toBeUndefined();
 	});
 });

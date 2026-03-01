@@ -4,12 +4,20 @@
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
+	import GameLibrary from '$lib/components/GameLibrary.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import { aiChat } from '$lib/stores/aiChat';
-	import { clearGameAIData } from '$lib/stores/aiPersistence';
+	import {
+		clearGameAIData,
+		computeSHA256,
+		addGameToLibrary,
+		updateLastPlayed,
+		type GameLibraryEntry
+	} from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 
 	let errorMessage = '';
+	let gameLibraryRef: GameLibrary;
 
 	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
@@ -21,9 +29,42 @@
 			aiChat.resetAIChat();
 			await clearGameAIData(gameName);
 			await gameState.loadGame(filename, data);
+
+			// Adiciona à biblioteca de jogos (upsert por SHA-256)
+			const sha256 = await computeSHA256(data);
+			const now = new Date().toISOString();
+			const entry: GameLibraryEntry = {
+				sha256,
+				filename,
+				gameName,
+				fileSize: data.byteLength,
+				addedDate: now,
+				lastPlayed: now,
+				gameData: data
+			};
+			await addGameToLibrary(entry);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
 			console.error('Error loading game:', error);
+		}
+	}
+
+	async function handleLoadFromLibrary(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
+		const { filename, data } = event.detail;
+		errorMessage = '';
+
+		try {
+			const gameName = filename.replace(/\.[^.]+$/, '');
+			aiChat.resetAIChat();
+			await clearGameAIData(gameName);
+			await gameState.loadGame(filename, data);
+
+			// Atualiza lastPlayed na biblioteca
+			const sha256 = await computeSHA256(data);
+			await updateLastPlayed(sha256);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
+			console.error('Error loading game from library:', error);
 		}
 	}
 
@@ -55,7 +96,10 @@
 
 	{#if !$isGameLoaded}
 		<div class="upload-screen">
-			<FileUploader on:gameLoaded={handleGameLoaded} />
+			<div class="upload-wrapper">
+				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} />
+				<FileUploader on:gameLoaded={handleGameLoaded} />
+			</div>
 		</div>
 	{:else}
 		<div class="container">
@@ -147,10 +191,17 @@
 	.upload-screen {
 		flex: 1;
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: center;
 		background: var(--bg-base);
 		overflow-y: auto;
+		padding: 2rem 0;
+	}
+
+	.upload-wrapper {
+		max-width: 600px;
+		width: 100%;
+		padding: 0 1rem;
 	}
 
 	.container {
