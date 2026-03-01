@@ -159,8 +159,8 @@
 	}
 
 	.upload-area {
-		background: #2a2a2a;
-		border: 2px dashed #4a4a4a;
+		background: var(--bg-elevated);
+		border: 2px dashed var(--border-light);
 		border-radius: 12px;
 		padding: 3rem 2rem;
 		text-align: center;
@@ -169,12 +169,12 @@
 	}
 
 	.upload-area:hover {
-		border-color: #ffa500;
+		border-color: var(--accent);
 	}
 
 	.upload-area.dragging {
-		border-color: #ffa500;
-		background: #2a2200;
+		border-color: var(--accent);
+		background: var(--upload-drag-bg);
 		border-style: solid;
 	}
 
@@ -196,28 +196,28 @@
 
 	h3 {
 		margin: 0;
-		color: #ffa500;
+		color: var(--accent);
 		font-size: 1.5rem;
 	}
 
 	p {
 		margin: 0;
-		color: #b0b0b0;
+		color: var(--text-secondary);
 	}
 
 	.formats {
 		font-size: 0.85rem;
-		color: #666;
+		color: var(--text-faint);
 		letter-spacing: 0.05em;
 	}
 
 	.file-size {
 		font-size: 0.9rem;
-		color: #888;
+		color: var(--text-faint);
 	}
 
 	.loading {
-		color: #ffa500;
+		color: var(--accent);
 		font-style: italic;
 	}
 
@@ -234,12 +234,12 @@
 	}
 
 	.btn-primary {
-		background: #ffa500;
-		color: #1a1a1a;
+		background: var(--accent);
+		color: var(--accent-text-on);
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background: #ff8c00;
+		background: var(--accent-dark);
 		transform: translateY(-2px);
 		box-shadow: 0 4px 8px rgba(255, 165, 0, 0.3);
 	}
@@ -250,20 +250,20 @@
 	}
 
 	.btn-secondary {
-		background: #3a3a3a;
-		color: #e0e0e0;
+		background: var(--btn-bg);
+		color: var(--text-primary);
 	}
 
 	.btn-secondary:hover {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	.error-message {
 		margin-top: 1rem;
 		padding: 1rem;
-		background: #442222;
-		color: #ff8888;
-		border: 1px solid #663333;
+		background: var(--error-dim-bg);
+		color: var(--error-text);
+		border: 1px solid var(--error-border);
 		border-radius: 6px;
 		font-size: 0.9rem;
 	}
@@ -271,13 +271,13 @@
 	.info-section {
 		margin-top: 2rem;
 		padding: 1.5rem;
-		background: #2a2a2a;
+		background: var(--bg-elevated);
 		border-radius: 8px;
 	}
 
 	.info-section h4 {
 		margin-top: 0;
-		color: #ffa500;
+		color: var(--accent);
 	}
 
 	.info-section ul {
@@ -290,19 +290,19 @@
 	}
 
 	.info-section a {
-		color: #6db3f2;
+		color: var(--link-color);
 		text-decoration: none;
 		transition: color 0.2s;
 	}
 
 	.info-section a:hover {
-		color: #ffa500;
+		color: var(--accent);
 		text-decoration: underline;
 	}
 
 	.note {
 		font-size: 0.85rem;
-		color: #888;
+		color: var(--text-faint);
 		margin-top: 1rem;
 		font-style: italic;
 	}

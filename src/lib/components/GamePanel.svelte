@@ -366,7 +366,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		background: #1e1e1e;
+		background: var(--bg-panel);
 		overflow: hidden;
 	}
 
@@ -375,15 +375,15 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1.5rem;
-		background: #2a2a2a;
-		border-bottom: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.game-title {
 		margin: 0;
 		font-size: 1rem;
-		color: #ffa500;
+		color: var(--accent);
 		font-weight: 600;
 	}
 
@@ -393,7 +393,7 @@
 	}
 
 	.btn-icon {
-		background: #3a3a3a;
+		background: var(--btn-bg);
 		border: none;
 		padding: 0.4rem 0.5rem;
 		border-radius: 4px;
@@ -404,7 +404,7 @@
 	}
 
 	.btn-icon:hover:not(:disabled) {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	.btn-icon:disabled {
@@ -414,12 +414,12 @@
 
 	/* ---- Feedback de save ---- */
 	.save-feedback {
-		background: #1e3a1e;
-		color: #80d080;
+		background: var(--success-bg);
+		color: var(--success-text);
 		text-align: center;
 		padding: 0.35rem 1rem;
 		font-size: 0.88rem;
-		border-bottom: 1px solid #2a5a2a;
+		border-bottom: 1px solid var(--success-border);
 		flex-shrink: 0;
 	}
 
@@ -430,10 +430,10 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.6rem 1.5rem;
-		background: #2a1a0a;
-		border-bottom: 1px solid #5a3a1a;
+		background: var(--warning-bg);
+		border-bottom: 1px solid var(--warning-border);
 		font-size: 0.88rem;
-		color: #e0a060;
+		color: var(--warning-text);
 		flex-shrink: 0;
 		flex-wrap: wrap;
 	}
@@ -445,9 +445,9 @@
 	}
 
 	.btn-danger {
-		background: #7a2020;
-		border: 1px solid #aa3030;
-		color: #ffaaaa;
+		background: var(--error-btn-bg);
+		border: 1px solid var(--error-btn-border);
+		color: var(--error-btn-text);
 		padding: 0.3rem 0.85rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -456,13 +456,13 @@
 	}
 
 	.btn-danger:hover {
-		background: #9a2a2a;
+		background: var(--error-btn-hover);
 	}
 
 	.btn-cancel-sm {
-		background: #3a3a3a;
-		border: 1px solid #555;
-		color: #aaa;
+		background: var(--btn-bg);
+		border: 1px solid var(--border-light);
+		color: var(--text-secondary);
 		padding: 0.3rem 0.75rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -471,20 +471,20 @@
 	}
 
 	.btn-cancel-sm:hover {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	/* ---- Save / Load panel ---- */
 	.save-load-panel {
-		background: #222;
-		border-bottom: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-bottom: 1px solid var(--border);
 		padding: 0.75rem 1.5rem;
 		flex-shrink: 0;
 	}
 
 	.panel-title {
 		font-size: 0.88rem;
-		color: #aaa;
+		color: var(--text-secondary);
 		margin-bottom: 0.5rem;
 		font-weight: 600;
 	}
@@ -504,9 +504,9 @@
 
 	.slot-input {
 		flex: 1;
-		background: #1a1a1a;
-		border: 1px solid #4a4a4a;
-		color: #e0e0e0;
+		background: var(--bg-base);
+		border: 1px solid var(--border-light);
+		color: var(--text-primary);
 		padding: 0.4rem 0.75rem;
 		border-radius: 4px;
 		font-family: 'Courier New', Courier, monospace;
@@ -515,13 +515,13 @@
 
 	.slot-input:focus {
 		outline: none;
-		border-color: #ffa500;
+		border-color: var(--accent);
 	}
 
 	.btn-confirm {
-		background: #1e3a1e;
-		border: 1px solid #3a6a3a;
-		color: #80d080;
+		background: var(--success-bg);
+		border: 1px solid var(--success-border);
+		color: var(--success-text);
 		padding: 0.4rem 1rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -530,7 +530,7 @@
 	}
 
 	.btn-confirm:hover:not(:disabled) {
-		background: #2a5a2a;
+		background: var(--success-border);
 	}
 
 	.btn-confirm:disabled {
@@ -539,9 +539,9 @@
 	}
 
 	.btn-cancel {
-		background: #3a3a3a;
+		background: var(--btn-bg);
 		border: none;
-		color: #aaa;
+		color: var(--text-secondary);
 		padding: 0.4rem 0.6rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -550,17 +550,17 @@
 	}
 
 	.btn-cancel:hover {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	.overwrite-warn {
 		margin-top: 0.4rem;
-		color: #e0a050;
+		color: var(--warning-text);
 		font-size: 0.82rem;
 	}
 
 	.no-slots {
-		color: #888;
+		color: var(--text-faint);
 		font-size: 0.88rem;
 		padding: 0.25rem 0;
 	}
@@ -571,11 +571,11 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		padding: 0.6rem 0.75rem;
-		background: #2a1a0a;
-		border: 1px solid #5a3a1a;
+		background: var(--warning-bg);
+		border: 1px solid var(--warning-border);
 		border-radius: 6px;
 		font-size: 0.85rem;
-		color: #e0a060;
+		color: var(--warning-text);
 		margin-bottom: 0.5rem;
 	}
 
@@ -591,16 +591,16 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		background: #1a1a1a;
-		border: 1px solid #3a3a3a;
+		background: var(--bg-base);
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		padding: 0.4rem 0.75rem;
 		transition: border-color 0.2s;
 	}
 
 	.slot-item.confirming {
-		border-color: #6a3030;
-		background: #1e1010;
+		border-color: var(--error-item-border);
+		background: var(--error-item-bg);
 	}
 
 	.slot-info {
@@ -610,13 +610,13 @@
 	}
 
 	.slot-name {
-		color: #e0e0e0;
+		color: var(--text-primary);
 		font-size: 0.88rem;
 		font-weight: 600;
 	}
 
 	.slot-date {
-		color: #777;
+		color: var(--text-faint);
 		font-size: 0.76rem;
 	}
 
@@ -627,9 +627,9 @@
 	}
 
 	.btn-load {
-		background: #1e2a4a;
-		border: 1px solid #3a4a7a;
-		color: #88aaff;
+		background: var(--info-bg);
+		border: 1px solid var(--info-border);
+		color: var(--info-text);
 		padding: 0.3rem 0.75rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -638,12 +638,12 @@
 	}
 
 	.btn-load:hover:not(:disabled) {
-		background: #2a3a6a;
+		background: var(--info-hover);
 	}
 
 	.btn-load.selected {
-		background: #2a3a6a;
-		border-color: #5a6aaa;
+		background: var(--info-selected-bg);
+		border-color: var(--info-selected-border);
 	}
 
 	.btn-load:disabled {
@@ -654,7 +654,7 @@
 	.btn-delete {
 		background: none;
 		border: none;
-		color: #666;
+		color: var(--text-faint);
 		padding: 0.3rem;
 		cursor: pointer;
 		font-size: 0.9rem;
@@ -663,20 +663,20 @@
 	}
 
 	.btn-delete:hover {
-		background: #3a2020;
-		color: #e06060;
+		background: var(--error-delete-hover-bg);
+		color: var(--error-delete-hover-text);
 	}
 
 	.delete-confirm-text {
-		color: #e06060;
+		color: var(--error-delete-hover-text);
 		font-size: 0.85rem;
 		font-weight: 600;
 	}
 
 	.btn-danger-sm {
-		background: #5a1a1a;
-		border: 1px solid #8a2a2a;
-		color: #ff9090;
+		background: var(--error-btn-bg);
+		border: 1px solid var(--error-btn-border);
+		color: var(--error-btn-text);
 		padding: 0.25rem 0.65rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -685,7 +685,7 @@
 	}
 
 	.btn-danger-sm:hover {
-		background: #7a2020;
+		background: var(--error-btn-hover);
 	}
 
 	/* ---- Output area ---- */
@@ -696,8 +696,8 @@
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 1rem;
 		line-height: 1.6;
-		color: #e0e0e0;
-		background: #1e1e1e;
+		color: var(--text-primary);
+		background: var(--bg-panel);
 	}
 
 	.output-container::-webkit-scrollbar {
@@ -705,16 +705,16 @@
 	}
 
 	.output-container::-webkit-scrollbar-track {
-		background: #2a2a2a;
+		background: var(--scrollbar-track);
 	}
 
 	.output-container::-webkit-scrollbar-thumb {
-		background: #4a4a4a;
+		background: var(--scrollbar-thumb);
 		border-radius: 4px;
 	}
 
 	.output-container::-webkit-scrollbar-thumb:hover {
-		background: #5a5a5a;
+		background: var(--scrollbar-thumb-hover);
 	}
 
 	.output-line {
@@ -723,14 +723,14 @@
 	}
 
 	.output-line.command {
-		color: #ffa500;
+		color: var(--accent);
 		font-weight: 600;
 	}
 
 	.welcome-message {
 		text-align: center;
 		padding: 2rem;
-		color: #888;
+		color: var(--text-faint);
 	}
 
 	.welcome-message p {
@@ -738,7 +738,7 @@
 	}
 
 	.hint {
-		color: #666;
+		color: var(--text-faint);
 		font-size: 0.9rem;
 		font-style: italic;
 	}
@@ -748,13 +748,13 @@
 		display: flex;
 		align-items: center;
 		padding: 0.75rem 1.5rem;
-		background: #2a2a2a;
-		border-top: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-top: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.prompt {
-		color: #ffa500;
+		color: var(--accent);
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 1.2rem;
 		font-weight: 700;
@@ -763,19 +763,19 @@
 
 	.command-input {
 		flex: 1;
-		background: #1e1e1e;
-		border: 1px solid #4a4a4a;
+		background: var(--bg-input);
+		border: 1px solid var(--border-light);
 		padding: 0.65rem 1rem;
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 1rem;
-		color: #e0e0e0;
+		color: var(--text-primary);
 		border-radius: 4px;
 		transition: border-color 0.2s;
 	}
 
 	.command-input:focus {
 		outline: none;
-		border-color: #ffa500;
+		border-color: var(--accent);
 	}
 
 	.command-input:disabled {
