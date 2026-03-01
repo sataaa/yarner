@@ -13,6 +13,12 @@
 
 import type { GameStatus } from '../stores/aiPersistence';
 
+/** Model option for provider dropdown */
+export interface ModelOption {
+	id: string;
+	name: string;
+}
+
 /** Provider preset — predefined configuration for a known AI provider */
 export interface ProviderPreset {
 	id: string;
@@ -35,7 +41,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 		id: 'gemini',
 		name: 'Google Gemini',
 		apiUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-		defaultModel: 'gemini-2.5-flash',
+		defaultModel: 'gemma-3-27b-it',
 		requiresKey: true
 	},
 	{
@@ -43,6 +49,13 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 		name: 'OpenAI',
 		apiUrl: 'https://api.openai.com/v1/chat/completions',
 		defaultModel: 'gpt-4o-mini',
+		requiresKey: true
+	},
+	{
+		id: 'openrouter',
+		name: 'OpenRouter',
+		apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
+		defaultModel: 'google/gemma-3-27b-it:free',
 		requiresKey: true
 	},
 	{
@@ -97,11 +110,11 @@ export async function sendToAIStreaming(
 ): Promise<AIResponse> {
 	const systemPrompt = buildSystemPrompt(gameName, currentGameStatus, gameHistoryDiff);
 
-	// Build messages array in OpenAI chat format
-	const messages = [
-		{ role: 'system', content: systemPrompt },
-		...conversationHistory
-	];
+	// Gemma não suporta system role — injeta como primeira mensagem user
+	const supportsSystem = !model.toLowerCase().includes('gemma');
+	const messages = supportsSystem
+		? [{ role: 'system', content: systemPrompt }, ...conversationHistory]
+		: [{ role: 'user', content: `[Instruções]\n${systemPrompt}` }, { role: 'assistant', content: 'Entendido, vou seguir essas instruções.' }, ...conversationHistory];
 
 	// Build request body — 2048 tokens gives enough room for the response
 	// plus the GAME_STATUS_JSON block that the AI appends at the end
@@ -327,6 +340,53 @@ export function tryRepairAndParseJSON(s: string): Record<string, unknown> | null
 
 	console.warn('Failed to parse game status JSON even after repair attempt');
 	return null;
+}
+
+/**
+ * Busca modelos disponíveis para o provider selecionado.
+ * - Gemini: lista da API do Google AI Studio (filtra modelos generateContent)
+ * - OpenRouter: lista da API pública (filtra modelos :free)
+ * - Outros: retorna array vazio (input de texto livre)
+ */
+export async function fetchAvailableModels(
+	providerId: string,
+	apiKey: string
+): Promise<ModelOption[]> {
+	try {
+		if (providerId === 'gemini' && apiKey) {
+			const resp = await fetch(
+				`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+			);
+			if (!resp.ok) return [];
+			const data = await resp.json();
+			return (data.models || [])
+				.filter((m: { supportedGenerationMethods?: string[] }) =>
+					m.supportedGenerationMethods?.includes('generateContent')
+				)
+				.map((m: { name: string; displayName: string }) => ({
+					id: m.name.replace('models/', ''),
+					name: m.displayName
+				}))
+				.sort((a: ModelOption, b: ModelOption) => a.name.localeCompare(b.name));
+		}
+
+		if (providerId === 'openrouter') {
+			const resp = await fetch('https://openrouter.ai/api/v1/models');
+			if (!resp.ok) return [];
+			const data = await resp.json();
+			return (data.data || [])
+				.filter((m: { id: string }) => m.id.endsWith(':free'))
+				.map((m: { id: string; name: string }) => ({
+					id: m.id,
+					name: m.name
+				}))
+				.sort((a: ModelOption, b: ModelOption) => a.name.localeCompare(b.name));
+		}
+	} catch {
+		// Falha silenciosa — usuário pode digitar manualmente
+	}
+
+	return [];
 }
 
 /**

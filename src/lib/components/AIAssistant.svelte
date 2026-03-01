@@ -20,7 +20,8 @@
 		aiModel,
 		locationMapExpanded
 	} from '$lib/stores/aiChat';
-	import { PROVIDER_PRESETS } from '$lib/api/claude';
+	import { PROVIDER_PRESETS, fetchAvailableModels } from '$lib/api/claude';
+	import type { ModelOption } from '$lib/api/claude';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import LocationMap from './LocationMap.svelte';
 
@@ -35,6 +36,8 @@
 	let settingsApiKey = '';
 	let settingsModel = '';
 	let settingsApiUrl = '';
+	let availableModels: ModelOption[] = [];
+	let loadingModels = false;
 
 	/** Sync local form fields when settings panel opens */
 	function openSettings() {
@@ -43,7 +46,16 @@
 			settingsApiKey = localStorage.getItem('yarner-api-key') || '';
 			settingsModel = $aiModel;
 			settingsApiUrl = $aiApiUrl;
+			loadModelsForProvider($aiProviderId, settingsApiKey);
 		}
+	}
+
+	async function loadModelsForProvider(providerId: string, apiKey: string) {
+		availableModels = [];
+		if (providerId === 'lmstudio' || providerId === 'custom') return;
+		loadingModels = true;
+		availableModels = await fetchAvailableModels(providerId, apiKey);
+		loadingModels = false;
 	}
 
 	function handleProviderChange(event: Event) {
@@ -51,14 +63,15 @@
 		const preset = PROVIDER_PRESETS.find((p) => p.id === select.value);
 		if (preset) {
 			aiChat.setProvider(preset.id);
-			// Update local form fields with preset defaults
 			settingsModel = preset.defaultModel;
 			settingsApiUrl = preset.apiUrl;
+			loadModelsForProvider(preset.id, settingsApiKey);
 		}
 	}
 
 	function handleApiKeySave() {
 		aiChat.setApiKey(settingsApiKey.trim());
+		loadModelsForProvider($aiProviderId, settingsApiKey.trim());
 	}
 
 	function handleModelSave() {
@@ -298,14 +311,26 @@
 			{/if}
 
 			<div class="settings-field">
-				<label for="model-input">Modelo</label>
-				<input
-					id="model-input"
-					type="text"
-					bind:value={settingsModel}
-					on:blur={handleModelSave}
-					placeholder="Nome do modelo"
-				/>
+				<label for="model-input">Modelo {#if loadingModels}<span class="loading-hint">carregando...</span>{/if}</label>
+				{#if availableModels.length > 0}
+					<select
+						id="model-input"
+						bind:value={settingsModel}
+						on:change={handleModelSave}
+					>
+						{#each availableModels as m}
+							<option value={m.id}>{m.name}</option>
+						{/each}
+					</select>
+				{:else}
+					<input
+						id="model-input"
+						type="text"
+						bind:value={settingsModel}
+						on:blur={handleModelSave}
+						placeholder="Nome do modelo"
+					/>
+				{/if}
 			</div>
 
 			{#if $aiProviderId === 'custom'}
@@ -692,6 +717,15 @@
 
 	.settings-hint a:hover {
 		text-decoration: underline;
+	}
+
+	.loading-hint {
+		font-size: 0.7rem;
+		color: var(--text-faint);
+		font-weight: 400;
+		font-style: italic;
+		text-transform: none;
+		letter-spacing: normal;
 	}
 
 	/* ---- Painel de status do jogo ---- */
