@@ -153,9 +153,7 @@
 
 <style>
 	.file-uploader {
-		max-width: 600px;
-		margin: 2rem auto;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
 	.upload-area {

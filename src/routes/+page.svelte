@@ -4,12 +4,23 @@
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
+	import GameLibrary from '$lib/components/GameLibrary.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import { aiChat } from '$lib/stores/aiChat';
-	import { clearGameAIData } from '$lib/stores/aiPersistence';
+	import {
+		clearGameAIData,
+		computeSHA256,
+		addGameToLibrary,
+		updateLastPlayed,
+		saveAIMemory,
+		saveChatHistory,
+		type GameLibraryEntry,
+		type SaveSlot
+	} from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 
 	let errorMessage = '';
+	let gameLibraryRef: GameLibrary;
 
 	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
@@ -21,9 +32,65 @@
 			aiChat.resetAIChat();
 			await clearGameAIData(gameName);
 			await gameState.loadGame(filename, data);
+
+			// Adiciona à biblioteca de jogos (upsert por SHA-256)
+			const sha256 = await computeSHA256(data);
+			const now = new Date().toISOString();
+			const entry: GameLibraryEntry = {
+				sha256,
+				filename,
+				gameName,
+				fileSize: data.byteLength,
+				addedDate: now,
+				lastPlayed: now,
+				gameData: data
+			};
+			await addGameToLibrary(entry);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
 			console.error('Error loading game:', error);
+		}
+	}
+
+	async function handleLoadFromLibrary(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
+		const { filename, data } = event.detail;
+		errorMessage = '';
+
+		try {
+			// NÃO limpa AI data do IDB — ao recarregar da biblioteca, queremos
+			// preservar a memória e chat da IA da sessão anterior.
+			// O reactive loadAIStateForGame vai carregar os dados do IDB.
+			aiChat.resetAIChat();
+			await gameState.loadGame(filename, data);
+
+			// Atualiza lastPlayed na biblioteca
+			const sha256 = await computeSHA256(data);
+			await updateLastPlayed(sha256);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
+			console.error('Error loading game from library:', error);
+		}
+	}
+
+	async function handleLoadFromSave(event: CustomEvent<{ slot: SaveSlot }>) {
+		const { slot } = event.detail;
+		errorMessage = '';
+
+		try {
+			// Persiste o estado da IA do slot no IDB ANTES de carregar.
+			// Não usa restoreAIMemoryFromSave() porque ela lê gameState.gameName
+			// que está vazio na tela inicial — o if(gameName) falha e não persiste.
+			// Aqui usamos o gameName do próprio slot diretamente.
+			await saveAIMemory(slot.gameName, slot.aiMemory ?? []);
+			await saveChatHistory(slot.gameName, slot.aiChatMessages ?? []);
+			await gameState.loadFromSaveSlot(slot);
+
+			// Atualiza lastPlayed na biblioteca
+			const sha256 = await computeSHA256(slot.gameData);
+			await updateLastPlayed(sha256);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Falha ao restaurar o save';
+			console.error('Error loading save from library:', error);
 		}
 	}
 
@@ -55,7 +122,10 @@
 
 	{#if !$isGameLoaded}
 		<div class="upload-screen">
-			<FileUploader on:gameLoaded={handleGameLoaded} />
+			<div class="upload-wrapper">
+				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
+				<FileUploader on:gameLoaded={handleGameLoaded} />
+			</div>
 		</div>
 	{:else}
 		<div class="container">
@@ -147,10 +217,17 @@
 	.upload-screen {
 		flex: 1;
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: center;
 		background: var(--bg-base);
 		overflow-y: auto;
+		padding: 2rem 0;
+	}
+
+	.upload-wrapper {
+		max-width: 600px;
+		width: 100%;
+		padding: 0 1rem;
 	}
 
 	.container {

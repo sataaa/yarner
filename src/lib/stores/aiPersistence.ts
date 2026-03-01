@@ -45,6 +45,17 @@ export interface SaveSlot {
 /** All save slots for one game, keyed by slotName */
 export type GameSaveSlots = Record<string, SaveSlot>;
 
+/** An entry in the game library — a previously loaded game stored for quick access */
+export interface GameLibraryEntry {
+	sha256: string;
+	filename: string;
+	gameName: string;
+	fileSize: number;
+	addedDate: string;
+	lastPlayed: string;
+	gameData: ArrayBuffer;
+}
+
 // ---- IndexedDB Schema ----
 
 interface YarnerAIDB {
@@ -61,11 +72,16 @@ interface YarnerAIDB {
 		key: string;
 		value: GameSaveSlots;
 	};
+	/** Game library: previously loaded games stored for quick reload */
+	gameLibrary: {
+		key: string;
+		value: GameLibraryEntry;
+	};
 }
 
 const DB_NAME = 'yarner-ai';
-// Version 2: added gameSaves object store
-const DB_VERSION = 2;
+// Version 3: added gameLibrary object store
+const DB_VERSION = 3;
 
 /** Open (or create) the IndexedDB database */
 async function getDB(): Promise<IDBPDatabase<YarnerAIDB>> {
@@ -77,6 +93,9 @@ async function getDB(): Promise<IDBPDatabase<YarnerAIDB>> {
 			}
 			if (oldVersion < 2) {
 				db.createObjectStore('gameSaves');
+			}
+			if (oldVersion < 3) {
+				db.createObjectStore('gameLibrary');
 			}
 		}
 	});
@@ -141,6 +160,56 @@ export async function clearGameAIData(gameName: string): Promise<void> {
 	const db = await getDB();
 	await db.delete('gameStatus', gameName);
 	await db.delete('chatHistory', gameName);
+}
+
+// ---- Game Library ----
+
+/** Compute SHA-256 hash of an ArrayBuffer, returned as hex string */
+export async function computeSHA256(data: ArrayBuffer): Promise<string> {
+	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Add or update a game in the library (upsert by SHA-256) */
+export async function addGameToLibrary(entry: GameLibraryEntry): Promise<void> {
+	const db = await getDB();
+	await db.put('gameLibrary', entry, entry.sha256);
+}
+
+/** Get all games in the library, sorted by lastPlayed descending */
+export async function getGameLibrary(): Promise<GameLibraryEntry[]> {
+	const db = await getDB();
+	const all = await db.getAll('gameLibrary');
+	return all.sort((a, b) => b.lastPlayed.localeCompare(a.lastPlayed));
+}
+
+/** Get a single game from the library by SHA-256 */
+export async function getGameFromLibrary(sha256: string): Promise<GameLibraryEntry | undefined> {
+	const db = await getDB();
+	return db.get('gameLibrary', sha256);
+}
+
+/** Remove a game from the library and all its associated data (saves, AI memory, chat) */
+export async function removeGameFromLibrary(sha256: string): Promise<void> {
+	const db = await getDB();
+	const entry = await db.get('gameLibrary', sha256);
+	if (entry) {
+		await db.delete('gameSaves', entry.gameName);
+		await db.delete('gameStatus', entry.gameName);
+		await db.delete('chatHistory', entry.gameName);
+	}
+	await db.delete('gameLibrary', sha256);
+}
+
+/** Update the lastPlayed timestamp for a game in the library */
+export async function updateLastPlayed(sha256: string): Promise<void> {
+	const db = await getDB();
+	const entry = await db.get('gameLibrary', sha256);
+	if (entry) {
+		entry.lastPlayed = new Date().toISOString();
+		await db.put('gameLibrary', entry, sha256);
+	}
 }
 
 // ---- Helpers ----
