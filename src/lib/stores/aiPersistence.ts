@@ -69,6 +69,8 @@ export interface SaveSlot {
 	gameData: ArrayBuffer;
 	/** AI game status at the time of saving (location, inventory, map, etc.) */
 	aiGameStatus?: GameStatus;
+	/** AI chat messages at the time of saving */
+	aiChatMessages?: AIChatMessage[];
 }
 
 /** All save slots for one game, keyed by slotName */

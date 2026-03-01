@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { parseAIResponse, tryRepairAndParseJSON, getErrorMessage, sendToAIStreaming } from './claude';
+import { parseAIResponse, tryRepairAndParseJSON, getErrorMessage, sendToAIStreaming, PROVIDER_PRESETS } from './claude';
+import type { ProviderPreset } from './claude';
 import type { GameStatus } from '$lib/stores/aiPersistence';
 
 // ---------------------------------------------------------------------------
@@ -102,7 +103,7 @@ describe('sendToAIStreaming', () => {
 		vi.stubGlobal('fetch', mockFetch);
 		const controller = new AbortController();
 
-		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {}, undefined, controller.signal);
+		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {}, undefined, undefined, controller.signal);
 
 		const [, options] = mockFetch.mock.calls[0];
 		expect(options.signal).toBe(controller.signal);
@@ -138,6 +139,101 @@ describe('sendToAIStreaming', () => {
 		// The catch(() => '') runs, so errorText = '' and statusText is used instead
 		await expect(sendToAIStreaming('', [], '', fallback, 'Zork', () => {}))
 			.rejects.toThrow('500');
+	});
+
+	it('uses the provided model name in the request body', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
+		vi.stubGlobal('fetch', mockFetch);
+
+		await sendToAIStreaming('key', [], '', fallback, 'Zork', () => {}, undefined, 'gemini-2.5-flash');
+
+		const [, options] = mockFetch.mock.calls[0];
+		const body = JSON.parse(options.body);
+		expect(body.model).toBe('gemini-2.5-flash');
+	});
+
+	it('uses the provided API URL instead of the default', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
+		vi.stubGlobal('fetch', mockFetch);
+
+		const customUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+		await sendToAIStreaming('key', [], '', fallback, 'Zork', () => {}, customUrl);
+
+		const [url] = mockFetch.mock.calls[0];
+		expect(url).toBe(customUrl);
+	});
+
+	it('defaults to local-model when no model is specified', async () => {
+		const mockFetch = vi.fn().mockResolvedValue({ ok: true, body: makeSSEStream(['ok']) });
+		vi.stubGlobal('fetch', mockFetch);
+
+		await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+
+		const [, options] = mockFetch.mock.calls[0];
+		const body = JSON.parse(options.body);
+		expect(body.model).toBe('local-model');
+	});
+
+	it('processes remaining buffered data when stream ends without trailing newline', async () => {
+		const encoder = new TextEncoder();
+		// Last chunk has no trailing \n — data stays in buffer until stream ends
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'first' } }] })}\n\n`));
+				// No trailing newline — this will remain in the buffer
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: ' last' } }] })}`));
+				controller.close();
+			}
+		});
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
+
+		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		expect(result.message).toBe('first last');
+	});
+
+	it('handles [DONE] in buffer without trailing newline', async () => {
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\n`));
+				controller.enqueue(encoder.encode('data: [DONE]'));
+				controller.close();
+			}
+		});
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
+
+		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		expect(result.message).toBe('ok');
+	});
+
+	it('ignores non-SSE data remaining in buffer', async () => {
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\n`));
+				controller.enqueue(encoder.encode('some garbage'));
+				controller.close();
+			}
+		});
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
+
+		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		expect(result.message).toBe('ok');
+	});
+
+	it('handles malformed JSON in buffer gracefully', async () => {
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\n`));
+				controller.enqueue(encoder.encode('data: {invalid json}'));
+				controller.close();
+			}
+		});
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream }));
+
+		const result = await sendToAIStreaming('', [], '', fallback, 'Zork', () => {});
+		expect(result.message).toBe('ok');
 	});
 
 	it('skips malformed SSE lines without throwing', async () => {
@@ -320,5 +416,38 @@ describe('getErrorMessage', () => {
 	it('returns generic unknown message for non-Error values', () => {
 		expect(getErrorMessage('unexpected string')).toContain('desconhecido');
 		expect(getErrorMessage(null)).toContain('desconhecido');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// PROVIDER_PRESETS
+// ---------------------------------------------------------------------------
+
+describe('PROVIDER_PRESETS', () => {
+	it('has at least 3 presets (lmstudio, gemini, openai)', () => {
+		expect(PROVIDER_PRESETS.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it('every preset has required fields', () => {
+		for (const p of PROVIDER_PRESETS) {
+			expect(p).toHaveProperty('id');
+			expect(p).toHaveProperty('name');
+			expect(p).toHaveProperty('apiUrl');
+			expect(p).toHaveProperty('defaultModel');
+			expect(typeof p.requiresKey).toBe('boolean');
+		}
+	});
+
+	it('lmstudio preset does not require a key', () => {
+		const lm = PROVIDER_PRESETS.find((p: ProviderPreset) => p.id === 'lmstudio');
+		expect(lm).toBeDefined();
+		expect(lm!.requiresKey).toBe(false);
+	});
+
+	it('gemini preset requires a key and uses the correct endpoint', () => {
+		const gemini = PROVIDER_PRESETS.find((p: ProviderPreset) => p.id === 'gemini');
+		expect(gemini).toBeDefined();
+		expect(gemini!.requiresKey).toBe(true);
+		expect(gemini!.apiUrl).toContain('generativelanguage.googleapis.com');
 	});
 });

@@ -13,8 +13,52 @@
 
 import type { GameStatus } from '../stores/aiPersistence';
 
+/** Provider preset — predefined configuration for a known AI provider */
+export interface ProviderPreset {
+	id: string;
+	name: string;
+	apiUrl: string;
+	defaultModel: string;
+	requiresKey: boolean;
+}
+
+/** Available provider presets (all OpenAI-compatible endpoints) */
+export const PROVIDER_PRESETS: ProviderPreset[] = [
+	{
+		id: 'lmstudio',
+		name: 'LM Studio (local)',
+		apiUrl: 'http://localhost:55511/v1/chat/completions',
+		defaultModel: 'local-model',
+		requiresKey: false
+	},
+	{
+		id: 'gemini',
+		name: 'Google Gemini',
+		apiUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+		defaultModel: 'gemini-2.5-flash',
+		requiresKey: true
+	},
+	{
+		id: 'openai',
+		name: 'OpenAI',
+		apiUrl: 'https://api.openai.com/v1/chat/completions',
+		defaultModel: 'gpt-4o-mini',
+		requiresKey: true
+	},
+	{
+		id: 'custom',
+		name: 'Personalizado',
+		apiUrl: '',
+		defaultModel: '',
+		requiresKey: false
+	}
+];
+
 /** Default endpoint for local LM Studio server (browser connects directly) */
 const DEFAULT_API_URL = 'http://localhost:55511/v1/chat/completions';
+
+/** Default model name (overridden by provider presets) */
+const DEFAULT_MODEL = 'local-model';
 
 /** Parsed AI response: visible chat message + structured game status update */
 export interface AIResponse {
@@ -37,6 +81,7 @@ export type StreamCallback = (partialText: string) => void;
  * @param gameName - Name of the game being played
  * @param onStream - Callback for streaming partial responses
  * @param apiUrl - Override the API endpoint URL
+ * @param model - Model name to use (defaults to 'local-model')
  * @returns Parsed response with chat message and updated game status
  */
 export async function sendToAIStreaming(
@@ -47,6 +92,7 @@ export async function sendToAIStreaming(
 	gameName: string,
 	onStream: StreamCallback,
 	apiUrl: string = DEFAULT_API_URL,
+	model: string = DEFAULT_MODEL,
 	signal?: AbortSignal
 ): Promise<AIResponse> {
 	const systemPrompt = buildSystemPrompt(gameName, currentGameStatus, gameHistoryDiff);
@@ -57,12 +103,13 @@ export async function sendToAIStreaming(
 		...conversationHistory
 	];
 
-	// Build request body
+	// Build request body — 2048 tokens gives enough room for the response
+	// plus the GAME_STATUS_JSON block that the AI appends at the end
 	const requestBody = {
-		model: 'local-model',
+		model,
 		messages,
 		stream: true,
-		max_tokens: 1024,
+		max_tokens: 2048,
 		temperature: 0.7
 	};
 
@@ -86,20 +133,26 @@ export async function sendToAIStreaming(
 		throw new Error('No response body received from AI server');
 	}
 
-	// Process the SSE (Server-Sent Events) stream
+	// Process the SSE (Server-Sent Events) stream.
+	// Some providers (notably Gemini) may split a single `data:` line across
+	// multiple chunks, so we buffer incomplete lines between reads.
 	let fullResponse = '';
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
+	let buffer = '';
 
 	try {
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
 
-			const chunk = decoder.decode(value, { stream: true });
-			const lines = chunk.split('\n');
+			buffer += decoder.decode(value, { stream: true });
 
-			for (const line of lines) {
+			// Split on newlines but keep the last (possibly incomplete) segment
+			const parts = buffer.split('\n');
+			buffer = parts.pop() ?? '';
+
+			for (const line of parts) {
 				const trimmed = line.trim();
 				if (!trimmed || !trimmed.startsWith('data: ')) continue;
 
@@ -115,6 +168,24 @@ export async function sendToAIStreaming(
 					}
 				} catch {
 					// Skip malformed JSON lines (common in SSE streams)
+				}
+			}
+		}
+
+		// Process any remaining buffered data after the stream ends
+		if (buffer.trim()) {
+			const trimmed = buffer.trim();
+			if (trimmed.startsWith('data: ')) {
+				const data = trimmed.slice(6);
+				if (data !== '[DONE]') {
+					try {
+						const parsed = JSON.parse(data);
+						const delta = parsed.choices?.[0]?.delta?.content;
+						if (delta) {
+							fullResponse += delta;
+							onStream(fullResponse);
+						}
+					} catch { /* ignore */ }
 				}
 			}
 		}

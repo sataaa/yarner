@@ -144,10 +144,10 @@ export async function restartGame(): Promise<void> {
 	const engine = createGameEngine();
 	const { gameName, gameData } = state;
 
-	// Limpa o histórico e marca como não carregado antes de iniciar
+	// Limpa o histórico mas mantém isLoaded = true para não desmontar os componentes.
+	// A engine antiga já foi destruída; a nova será atribuída após loadGame.
 	gameStateStore.update(s => ({
 		...s,
-		isLoaded: false,
 		gameHistory: [],
 		commandHistory: [],
 		engine: null
@@ -165,7 +165,6 @@ export async function restartGame(): Promise<void> {
 
 	gameStateStore.update(s => ({
 		...s,
-		isLoaded: true,
 		engine,
 		gameName,
 		gameData
@@ -179,8 +178,13 @@ export async function restartGame(): Promise<void> {
  *
  * @param slotName - Name for the save slot
  * @param aiGameStatus - Current AI game status (location, inventory, map, etc.)
+ * @param aiChatMessages - Current AI chat messages
  */
-export async function saveGame(slotName: string, aiGameStatus?: import('./aiPersistence').GameStatus): Promise<void> {
+export async function saveGame(
+	slotName: string,
+	aiGameStatus?: import('./aiPersistence').GameStatus,
+	aiChatMessages?: import('./aiPersistence').AIChatMessage[]
+): Promise<void> {
 	const state = get(gameStateStore);
 
 	if (!state.isLoaded || !state.engine || !state.gameData) {
@@ -199,7 +203,8 @@ export async function saveGame(slotName: string, aiGameStatus?: import('./aiPers
 		snapshot,
 		gameHistory: [...state.gameHistory],
 		gameData: state.gameData,
-		aiGameStatus
+		aiGameStatus,
+		aiChatMessages
 	};
 
 	await writeSaveSlot(state.gameName, slot);

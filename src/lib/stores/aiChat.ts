@@ -26,7 +26,7 @@ import {
 	type GameStatus,
 	type AIChatMessage
 } from './aiPersistence';
-import { sendToAIStreaming, getErrorMessage } from '../api/claude';
+import { sendToAIStreaming, getErrorMessage, PROVIDER_PRESETS } from '../api/claude';
 
 // ---- State Interface ----
 
@@ -36,6 +36,12 @@ export interface AIChatState {
 	/** Index into gameState.gameHistory[] — everything before this was already sent to AI */
 	lastSentGameHistoryIndex: number;
 	apiKey: string;
+	/** Selected provider preset ID ('lmstudio', 'gemini', 'openai', 'custom') */
+	providerId: string;
+	/** API endpoint URL */
+	apiUrl: string;
+	/** Model name */
+	model: string;
 	isLoading: boolean;
 	isStreaming: boolean;
 	/** Accumulated text during streaming (for live display) */
@@ -43,11 +49,16 @@ export interface AIChatState {
 	error: string;
 }
 
+const defaultPreset = PROVIDER_PRESETS[0]; // LM Studio
+
 const initialState: AIChatState = {
 	messages: [],
 	gameStatus: createEmptyGameStatus(),
 	lastSentGameHistoryIndex: 0,
 	apiKey: '',
+	providerId: defaultPreset.id,
+	apiUrl: defaultPreset.apiUrl,
+	model: defaultPreset.defaultModel,
 	isLoading: false,
 	isStreaming: false,
 	streamingContent: '',
@@ -73,10 +84,20 @@ export function abortStreaming(): void {
 
 // ---- API Key Management ----
 
-/** Initialize the store — load API key from localStorage */
+/** Initialize the store — load API key and provider settings from localStorage */
 export function initAIChat(): void {
 	const key = localStorage.getItem('yarner-api-key') || '';
-	aiChatStore.update((s) => ({ ...s, apiKey: key }));
+	const savedProviderId = localStorage.getItem('yarner-provider-id');
+	const savedApiUrl = localStorage.getItem('yarner-api-url');
+	const savedModel = localStorage.getItem('yarner-model');
+
+	// Resolve provider: use saved values or fall back to preset defaults
+	const preset = PROVIDER_PRESETS.find((p) => p.id === savedProviderId) || defaultPreset;
+	const providerId = preset.id;
+	const apiUrl = savedApiUrl || preset.apiUrl;
+	const model = savedModel || preset.defaultModel;
+
+	aiChatStore.update((s) => ({ ...s, apiKey: key, providerId, apiUrl, model }));
 }
 
 /** Save the user's API key */
@@ -89,6 +110,26 @@ export function setApiKey(key: string): void {
 export function clearApiKey(): void {
 	localStorage.removeItem('yarner-api-key');
 	aiChatStore.update((s) => ({ ...s, apiKey: '' }));
+}
+
+/**
+ * Switch to a different AI provider. Applies preset defaults for URL and model
+ * unless custom values are provided. Persists to localStorage.
+ */
+export function setProvider(
+	providerId: string,
+	customApiUrl?: string,
+	customModel?: string
+): void {
+	const preset = PROVIDER_PRESETS.find((p) => p.id === providerId);
+	const apiUrl = customApiUrl || preset?.apiUrl || '';
+	const model = customModel || preset?.defaultModel || '';
+
+	localStorage.setItem('yarner-provider-id', providerId);
+	localStorage.setItem('yarner-api-url', apiUrl);
+	localStorage.setItem('yarner-model', model);
+
+	aiChatStore.update((s) => ({ ...s, providerId, apiUrl, model, error: '' }));
 }
 
 // ---- Game History Diff ----
@@ -166,7 +207,7 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 			content: msg.content
 		}));
 
-		// Call AI with streaming (works with LM Studio, OpenAI, Anthropic, etc.)
+		// Call AI with streaming (works with LM Studio, Gemini, OpenAI, etc.)
 		const response = await sendToAIStreaming(
 			state.apiKey,
 			conversationHistory,
@@ -177,7 +218,8 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 				// Update streaming content for live display
 				aiChatStore.update((s) => ({ ...s, streamingContent: partialText }));
 			},
-			undefined,
+			state.apiUrl,
+			state.model,
 			signal
 		);
 
@@ -248,10 +290,14 @@ export async function loadAIStateForGame(gameName: string): Promise<void> {
 /** Reset AI chat state (when game changes or is unloaded) */
 export function resetAIChat(): void {
 	abortStreaming();
-	const currentKey = get(aiChatStore).apiKey;
+	const s = get(aiChatStore);
 	aiChatStore.set({
 		...initialState,
-		apiKey: currentKey // Preserve the API key across game changes
+		// Preserve provider config across game changes
+		apiKey: s.apiKey,
+		providerId: s.providerId,
+		apiUrl: s.apiUrl,
+		model: s.model
 	});
 }
 
@@ -261,16 +307,20 @@ export function resetAIChat(): void {
  *
  * @param savedStatus - GameStatus armazenado no slot (pode ser undefined para saves antigos)
  * @param gameHistoryLength - Tamanho do gameHistory restaurado (atualiza o smart diff index)
+ * @param savedMessages - Mensagens do chat salvas no slot (pode ser undefined para saves antigos)
  */
 export async function restoreAIStatusFromSave(
 	savedStatus: import('./aiPersistence').GameStatus | undefined,
-	gameHistoryLength: number
+	gameHistoryLength: number,
+	savedMessages?: import('./aiPersistence').AIChatMessage[]
 ): Promise<void> {
 	const gameS = get(gameState);
 	const statusToRestore = savedStatus ?? createEmptyGameStatus();
+	const messagesToRestore = savedMessages ?? [];
 
 	aiChatStore.update(s => ({
 		...s,
+		messages: messagesToRestore,
 		gameStatus: statusToRestore,
 		// Aponta o smart diff para o fim do histórico restaurado
 		// para que a IA não reenvie tudo o que já foi processado
@@ -280,6 +330,7 @@ export async function restoreAIStatusFromSave(
 
 	if (gameS.gameName) {
 		await saveGameStatus(gameS.gameName, statusToRestore);
+		await saveChatHistory(gameS.gameName, messagesToRestore);
 	}
 }
 
@@ -344,6 +395,9 @@ export const aiIsStreaming = derived(aiChatStore, ($s) => $s.isStreaming);
 export const aiStreamingContent = derived(aiChatStore, ($s) => $s.streamingContent);
 export const aiError = derived(aiChatStore, ($s) => $s.error);
 export const aiHasKey = derived(aiChatStore, ($s) => $s.apiKey.length > 0);
+export const aiProviderId = derived(aiChatStore, ($s) => $s.providerId);
+export const aiApiUrl = derived(aiChatStore, ($s) => $s.apiUrl);
+export const aiModel = derived(aiChatStore, ($s) => $s.model);
 
 /** Export the store with its action functions */
 export const aiChat = {
@@ -351,6 +405,7 @@ export const aiChat = {
 	initAIChat,
 	setApiKey,
 	clearApiKey,
+	setProvider,
 	sendMessageToAI,
 	loadAIStateForGame,
 	resetAIChat,

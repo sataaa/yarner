@@ -6,7 +6,8 @@
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
-	import { locationMapExpanded } from '$lib/stores/aiChat';
+	import { locationMapExpanded, aiChat } from '$lib/stores/aiChat';
+	import { clearGameAIData } from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 
 	let errorMessage = '';
@@ -16,6 +17,10 @@
 		errorMessage = '';
 
 		try {
+			// Zera o chat da IA antes de carregar — novo upload = nova jogatina
+			const gameName = filename.replace(/\.[^.]+$/, '');
+			aiChat.resetAIChat();
+			await clearGameAIData(gameName);
 			await gameState.loadGame(filename, data);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
