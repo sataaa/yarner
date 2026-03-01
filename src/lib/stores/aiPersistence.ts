@@ -1,9 +1,8 @@
 /**
  * AI Persistence Layer — IndexedDB storage for AI assistant state
  *
- * Stores game status (inventory, objectives, etc.) and chat history
- * per game using the `idb` library. Each game has its own separate data,
- * keyed by gameName.
+ * Stores AI memory notes and chat history per game using the `idb` library.
+ * Each game has its own separate data, keyed by gameName.
  *
  * The API key is stored in localStorage (simpler for a "bring your own key" model).
  */
@@ -12,38 +11,8 @@ import { openDB, type IDBPDatabase } from 'idb';
 
 // ---- Types ----
 
-/** State of a single visited location: exits and notes */
-export interface LocalVisitado {
-	/**
-	 * Map of directions to destinations.
-	 * Value is the destination location name if explored, or "não explorado" if not.
-	 * Example: { "north": "Forest Path", "south": "não explorado" }
-	 */
-	saidas: Record<string, string>;
-	/** Notes about this location's state (items on floor, locked doors, etc.) */
-	notas: string[];
-}
-
-/** Structured game status maintained by the AI across interactions */
-export interface GameStatus {
-	/** Current player location in the game world */
-	localizacaoAtual: string;
-	/** Items the player is carrying */
-	inventario: string[];
-	/** Current objectives / goals (from game context and player conversations) */
-	objetivos: string[];
-	/** Things the AI noticed but the player hasn't explored yet */
-	coisasNaoExploradas: string[];
-	/** General observations and notes about the game state */
-	observacoes: string[];
-	/**
-	 * Map of all visited locations with their exits and notes.
-	 * Key: location name. Value: exits (direction → destination) and notes.
-	 */
-	locaisVisitados: Record<string, LocalVisitado>;
-	/** ISO timestamp of when this status was last updated */
-	ultimaAtualizacao: string;
-}
+/** AI memory — a simple list of notes managed by the AI */
+export type AIMemory = string[];
 
 /** A single message in the AI chat conversation */
 export interface AIChatMessage {
@@ -67,8 +36,8 @@ export interface SaveSlot {
 	gameHistory: string[];
 	/** Original game file — needed to recreate the static ROM on restore */
 	gameData: ArrayBuffer;
-	/** AI game status at the time of saving (location, inventory, map, etc.) */
-	aiGameStatus?: GameStatus;
+	/** AI memory notes at the time of saving */
+	aiMemory?: AIMemory;
 	/** AI chat messages at the time of saving */
 	aiChatMessages?: AIChatMessage[];
 }
@@ -81,7 +50,7 @@ export type GameSaveSlots = Record<string, SaveSlot>;
 interface YarnerAIDB {
 	gameStatus: {
 		key: string;
-		value: GameStatus;
+		value: AIMemory;
 	};
 	chatHistory: {
 		key: string;
@@ -113,14 +82,14 @@ async function getDB(): Promise<IDBPDatabase<YarnerAIDB>> {
 	});
 }
 
-// ---- Game Status ----
+// ---- AI Memory ----
 
-export async function saveGameStatus(gameName: string, status: GameStatus): Promise<void> {
+export async function saveAIMemory(gameName: string, memory: AIMemory): Promise<void> {
 	const db = await getDB();
-	await db.put('gameStatus', status, gameName);
+	await db.put('gameStatus', memory, gameName);
 }
 
-export async function loadGameStatus(gameName: string): Promise<GameStatus | undefined> {
+export async function loadAIMemory(gameName: string): Promise<AIMemory | undefined> {
 	const db = await getDB();
 	return db.get('gameStatus', gameName);
 }
@@ -176,15 +145,7 @@ export async function clearGameAIData(gameName: string): Promise<void> {
 
 // ---- Helpers ----
 
-/** Create an empty game status with default values */
-export function createEmptyGameStatus(): GameStatus {
-	return {
-		localizacaoAtual: '',
-		inventario: [],
-		objetivos: [],
-		coisasNaoExploradas: [],
-		observacoes: [],
-		locaisVisitados: {},
-		ultimaAtualizacao: new Date().toISOString()
-	};
+/** Create an empty AI memory */
+export function createEmptyMemory(): AIMemory {
+	return [];
 }

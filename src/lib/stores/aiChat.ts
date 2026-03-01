@@ -10,20 +10,20 @@
  * Data flow:
  * 1. User types a message
  * 2. Store computes diff of gameHistory since last AI interaction
- * 3. Sends diff + current game status + conversation to Claude API
- * 4. Parses response: updates chat messages and game status
+ * 3. Sends diff + current memory + conversation to Claude API
+ * 4. Parses response: updates chat messages and memory
  * 5. Persists to IndexedDB for cross-reload survival
  */
 
 import { writable, derived, get } from 'svelte/store';
 import { gameState } from './gameState';
 import {
-	saveGameStatus,
-	loadGameStatus,
+	saveAIMemory,
+	loadAIMemory,
 	saveChatHistory,
 	loadChatHistory,
-	createEmptyGameStatus,
-	type GameStatus,
+	createEmptyMemory,
+	type AIMemory,
 	type AIChatMessage
 } from './aiPersistence';
 import { sendToAIStreaming, getErrorMessage, PROVIDER_PRESETS } from '../api/claude';
@@ -32,7 +32,7 @@ import { sendToAIStreaming, getErrorMessage, PROVIDER_PRESETS } from '../api/cla
 
 export interface AIChatState {
 	messages: AIChatMessage[];
-	gameStatus: GameStatus;
+	memory: AIMemory;
 	/** Index into gameState.gameHistory[] — everything before this was already sent to AI */
 	lastSentGameHistoryIndex: number;
 	apiKey: string;
@@ -53,7 +53,7 @@ const defaultPreset = PROVIDER_PRESETS[0]; // LM Studio
 
 const initialState: AIChatState = {
 	messages: [],
-	gameStatus: createEmptyGameStatus(),
+	memory: createEmptyMemory(),
 	lastSentGameHistoryIndex: 0,
 	apiKey: '',
 	providerId: defaultPreset.id,
@@ -159,13 +159,13 @@ function getGameHistoryDiff(): string {
 // ---- Send Message to AI ----
 
 /**
- * Send a user message to the Claude AI assistant.
+ * Send a user message to the AI assistant.
  *
  * This is the main action function. It:
  * 1. Adds the user message to the conversation
  * 2. Computes the game history diff
- * 3. Calls the Claude API with streaming
- * 4. Parses the response (chat message + game status update)
+ * 3. Calls the AI API with streaming
+ * 4. Parses the response (chat message + memory update)
  * 5. Persists everything to IndexedDB
  */
 export async function sendMessageToAI(userMessage: string): Promise<void> {
@@ -176,8 +176,6 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 	abortStreaming();
 	currentAbortController = new AbortController();
 	const { signal } = currentAbortController;
-
-	// API key is optional for local servers (LM Studio, Ollama)
 
 	// Add user message
 	const userMsg: AIChatMessage = {
@@ -207,15 +205,14 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 			content: msg.content
 		}));
 
-		// Call AI with streaming (works with LM Studio, Gemini, OpenAI, etc.)
+		// Call AI with streaming
 		const response = await sendToAIStreaming(
 			state.apiKey,
 			conversationHistory,
 			diff,
-			state.gameStatus,
+			state.memory,
 			gameS.gameName,
 			(partialText) => {
-				// Update streaming content for live display
 				aiChatStore.update((s) => ({ ...s, streamingContent: partialText }));
 			},
 			state.apiUrl,
@@ -233,7 +230,7 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 		aiChatStore.update((s) => ({
 			...s,
 			messages: [...s.messages, assistantMsg],
-			gameStatus: response.updatedGameStatus,
+			memory: response.updatedMemory,
 			lastSentGameHistoryIndex: gameS.gameHistory.length,
 			isLoading: false,
 			isStreaming: false,
@@ -243,7 +240,7 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 		// Persist to IndexedDB
 		const finalState = get(aiChatStore);
 		if (gameS.gameName) {
-			await saveGameStatus(gameS.gameName, finalState.gameStatus);
+			await saveAIMemory(gameS.gameName, finalState.memory);
 			await saveChatHistory(gameS.gameName, finalState.messages);
 		}
 	} catch (error) {
@@ -275,12 +272,12 @@ export async function sendMessageToAI(userMessage: string): Promise<void> {
 export async function loadAIStateForGame(gameName: string): Promise<void> {
 	// If a stream is active (e.g. user loaded a new game mid-response), kill it first
 	abortStreaming();
-	const savedStatus = await loadGameStatus(gameName);
+	const savedMemory = await loadAIMemory(gameName);
 	const savedMessages = await loadChatHistory(gameName);
 
 	aiChatStore.update((s) => ({
 		...s,
-		gameStatus: savedStatus || createEmptyGameStatus(),
+		memory: savedMemory || createEmptyMemory(),
 		messages: savedMessages,
 		lastSentGameHistoryIndex: 0,
 		error: ''
@@ -302,68 +299,64 @@ export function resetAIChat(): void {
 }
 
 /**
- * Restaura o status de IA a partir de um slot de save.
+ * Restaura a memória de IA a partir de um slot de save.
  * Chamado após loadFromSaveSlot() para sincronizar o assistente com o estado salvo.
  *
- * @param savedStatus - GameStatus armazenado no slot (pode ser undefined para saves antigos)
+ * @param savedMemory - AIMemory armazenada no slot (pode ser undefined para saves antigos)
  * @param gameHistoryLength - Tamanho do gameHistory restaurado (atualiza o smart diff index)
  * @param savedMessages - Mensagens do chat salvas no slot (pode ser undefined para saves antigos)
  */
-export async function restoreAIStatusFromSave(
-	savedStatus: import('./aiPersistence').GameStatus | undefined,
+export async function restoreAIMemoryFromSave(
+	savedMemory: AIMemory | undefined,
 	gameHistoryLength: number,
-	savedMessages?: import('./aiPersistence').AIChatMessage[]
+	savedMessages?: AIChatMessage[]
 ): Promise<void> {
 	const gameS = get(gameState);
-	const statusToRestore = savedStatus ?? createEmptyGameStatus();
+	const memoryToRestore = savedMemory ?? createEmptyMemory();
 	const messagesToRestore = savedMessages ?? [];
 
 	aiChatStore.update(s => ({
 		...s,
 		messages: messagesToRestore,
-		gameStatus: statusToRestore,
-		// Aponta o smart diff para o fim do histórico restaurado
-		// para que a IA não reenvie tudo o que já foi processado
+		memory: memoryToRestore,
 		lastSentGameHistoryIndex: gameHistoryLength,
 		error: ''
 	}));
 
 	if (gameS.gameName) {
-		await saveGameStatus(gameS.gameName, statusToRestore);
+		await saveAIMemory(gameS.gameName, memoryToRestore);
 		await saveChatHistory(gameS.gameName, messagesToRestore);
 	}
 }
 
 /**
  * Reseta o estado de IA para um restart de jogo:
- * - Zera o game status (localização, inventário, etc.)
- * - Limpa mensagens do chat (não são mais relevantes para o estado reiniciado)
+ * - Zera a memória (notas)
+ * - Limpa mensagens do chat
  * - Persiste o estado zerado no IndexedDB
- *
- * Chamado por GamePanel quando o usuário confirma o restart.
  */
 export async function resetAIStateForRestart(): Promise<void> {
 	const gameS = get(gameState);
-	const emptyStatus = createEmptyGameStatus();
+	const emptyMemory = createEmptyMemory();
 
 	aiChatStore.update(s => ({
 		...s,
 		messages: [],
-		gameStatus: emptyStatus,
+		memory: emptyMemory,
 		lastSentGameHistoryIndex: 0,
 		error: ''
 	}));
 
 	if (gameS.gameName) {
-		await saveGameStatus(gameS.gameName, emptyStatus);
+		await saveAIMemory(gameS.gameName, emptyMemory);
 		await saveChatHistory(gameS.gameName, []);
 	}
 }
 
 /**
- * Clear chat messages but keep the game status as persistent memory.
+ * Clear chat messages but keep the memory as persistent context.
  *
- * The game status acts as a summary of everything the AI knows so far,
+ * The memory acts as a summary of everything the AI knows so far,
  * so the next conversation starts with context without needing the full log.
  * Also persists the cleared state to IndexedDB.
  */
@@ -373,11 +366,11 @@ export async function clearChatMessages(): Promise<void> {
 	aiChatStore.update((s) => ({
 		...s,
 		messages: [],
-		lastSentGameHistoryIndex: gameS.gameHistory.length, // Skip re-sending old game output
+		lastSentGameHistoryIndex: gameS.gameHistory.length,
 		error: ''
 	}));
 
-	// Persist cleared messages (game status stays intact in IndexedDB)
+	// Persist cleared messages (memory stays intact in IndexedDB)
 	if (gameS.gameName) {
 		await saveChatHistory(gameS.gameName, []);
 	}
@@ -385,11 +378,8 @@ export async function clearChatMessages(): Promise<void> {
 
 // ---- Derived Stores ----
 
-/** Controls whether the location map is expanded to a third column */
-export const locationMapExpanded = writable(false);
-
 export const aiMessages = derived(aiChatStore, ($s) => $s.messages);
-export const aiGameStatus = derived(aiChatStore, ($s) => $s.gameStatus);
+export const aiMemory = derived(aiChatStore, ($s) => $s.memory);
 export const aiIsLoading = derived(aiChatStore, ($s) => $s.isLoading);
 export const aiIsStreaming = derived(aiChatStore, ($s) => $s.isStreaming);
 export const aiStreamingContent = derived(aiChatStore, ($s) => $s.streamingContent);
@@ -410,6 +400,6 @@ export const aiChat = {
 	loadAIStateForGame,
 	resetAIChat,
 	resetAIStateForRestart,
-	restoreAIStatusFromSave,
+	restoreAIMemoryFromSave,
 	clearChatMessages
 };

@@ -4,9 +4,8 @@
 	import FileUploader from '$lib/components/FileUploader.svelte';
 	import GamePanel from '$lib/components/GamePanel.svelte';
 	import AIAssistant from '$lib/components/AIAssistant.svelte';
-	import LocationMap from '$lib/components/LocationMap.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
-	import { locationMapExpanded, aiChat } from '$lib/stores/aiChat';
+	import { aiChat } from '$lib/stores/aiChat';
 	import { clearGameAIData } from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 
@@ -67,12 +66,6 @@
 			<div class="panel ai-panel">
 				<AIAssistant />
 			</div>
-
-			{#if $locationMapExpanded}
-				<div class="panel map-panel">
-					<LocationMap expanded={true} />
-				</div>
-			{/if}
 		</div>
 	{/if}
 </main>
@@ -183,13 +176,6 @@
 		overflow: hidden;
 	}
 
-	.map-panel {
-		background: var(--bg-panel);
-		border-left: 1px solid var(--border);
-		flex: 0 0 300px;
-		overflow: hidden;
-	}
-
 	@media (max-width: 768px) {
 		.container {
 			flex-direction: column;
@@ -199,12 +185,6 @@
 			border-right: none;
 			border-bottom: 1px solid var(--border);
 			min-height: 55vh;
-		}
-
-		.map-panel {
-			flex: 0 0 200px;
-			border-left: none;
-			border-top: 1px solid var(--border);
 		}
 	}
 </style>
