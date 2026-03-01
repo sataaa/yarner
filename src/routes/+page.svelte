@@ -12,7 +12,10 @@
 		computeSHA256,
 		addGameToLibrary,
 		updateLastPlayed,
-		type GameLibraryEntry
+		saveAIMemory,
+		saveChatHistory,
+		type GameLibraryEntry,
+		type SaveSlot
 	} from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 
@@ -54,9 +57,10 @@
 		errorMessage = '';
 
 		try {
-			const gameName = filename.replace(/\.[^.]+$/, '');
+			// NÃO limpa AI data do IDB — ao recarregar da biblioteca, queremos
+			// preservar a memória e chat da IA da sessão anterior.
+			// O reactive loadAIStateForGame vai carregar os dados do IDB.
 			aiChat.resetAIChat();
-			await clearGameAIData(gameName);
 			await gameState.loadGame(filename, data);
 
 			// Atualiza lastPlayed na biblioteca
@@ -65,6 +69,28 @@
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
 			console.error('Error loading game from library:', error);
+		}
+	}
+
+	async function handleLoadFromSave(event: CustomEvent<{ slot: SaveSlot }>) {
+		const { slot } = event.detail;
+		errorMessage = '';
+
+		try {
+			// Persiste o estado da IA do slot no IDB ANTES de carregar.
+			// Não usa restoreAIMemoryFromSave() porque ela lê gameState.gameName
+			// que está vazio na tela inicial — o if(gameName) falha e não persiste.
+			// Aqui usamos o gameName do próprio slot diretamente.
+			await saveAIMemory(slot.gameName, slot.aiMemory ?? []);
+			await saveChatHistory(slot.gameName, slot.aiChatMessages ?? []);
+			await gameState.loadFromSaveSlot(slot);
+
+			// Atualiza lastPlayed na biblioteca
+			const sha256 = await computeSHA256(slot.gameData);
+			await updateLastPlayed(sha256);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Falha ao restaurar o save';
+			console.error('Error loading save from library:', error);
 		}
 	}
 
@@ -97,7 +123,7 @@
 	{#if !$isGameLoaded}
 		<div class="upload-screen">
 			<div class="upload-wrapper">
-				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} />
+				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
 				<FileUploader on:gameLoaded={handleGameLoaded} />
 			</div>
 		</div>
