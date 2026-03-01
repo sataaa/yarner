@@ -319,7 +319,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		background: #1a1a1a;
+		background: var(--bg-base);
 	}
 
 	/* ---- Cabeçalho ---- */
@@ -328,15 +328,15 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1.5rem;
-		background: #2a2a2a;
-		border-bottom: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.chat-header h2 {
 		margin: 0;
 		font-size: 1rem;
-		color: #ffa500;
+		color: var(--accent);
 		font-weight: 600;
 	}
 
@@ -346,7 +346,7 @@
 	}
 
 	.btn-icon {
-		background: #3a3a3a;
+		background: var(--btn-bg);
 		border: none;
 		padding: 0.4rem 0.5rem;
 		border-radius: 4px;
@@ -357,12 +357,12 @@
 	}
 
 	.btn-icon:hover:not(:disabled) {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	.btn-icon.active {
-		background: #5a3a00;
-		outline: 1px solid #ffa500;
+		background: var(--accent-dim);
+		outline: 1px solid var(--accent);
 	}
 
 	.btn-icon:disabled {
@@ -372,8 +372,8 @@
 
 	/* ---- Painel de status do jogo ---- */
 	.game-status-panel {
-		background: #1e1e1e;
-		border-bottom: 1px solid #3a3a3a;
+		background: var(--bg-panel);
+		border-bottom: 1px solid var(--border);
 		padding: 0.75rem 1.5rem;
 		max-height: 260px;
 		overflow-y: auto;
@@ -389,7 +389,7 @@
 	}
 
 	.status-section h4 {
-		color: #ffa500;
+		color: var(--accent);
 		font-size: 0.82rem;
 		margin: 0 0 0.2rem 0;
 		text-transform: uppercase;
@@ -397,7 +397,7 @@
 	}
 
 	.status-section p {
-		color: #d0d0d0;
+		color: var(--text-primary);
 		margin: 0;
 		font-size: 0.88rem;
 	}
@@ -405,7 +405,7 @@
 	.status-section ul {
 		margin: 0;
 		padding-left: 1.2rem;
-		color: #d0d0d0;
+		color: var(--text-primary);
 		font-size: 0.85rem;
 	}
 
@@ -415,7 +415,7 @@
 
 	/* ---- Mapa inline ---- */
 	.location-map-panel {
-		border-bottom: 1px solid #3a3a3a;
+		border-bottom: 1px solid var(--border);
 		max-height: 280px;
 		overflow: hidden;
 		display: flex;
@@ -435,11 +435,11 @@
 	}
 
 	.messages-area::-webkit-scrollbar-track {
-		background: #222;
+		background: var(--scrollbar-track);
 	}
 
 	.messages-area::-webkit-scrollbar-thumb {
-		background: #3a3a3a;
+		background: var(--scrollbar-thumb);
 		border-radius: 4px;
 	}
 
@@ -450,7 +450,7 @@
 		align-items: center;
 		text-align: center;
 		padding: 2.5rem 1.5rem;
-		color: #666;
+		color: var(--text-faint);
 		gap: 0.75rem;
 	}
 
@@ -462,7 +462,7 @@
 	.empty-chat p {
 		margin: 0;
 		font-size: 0.9rem;
-		color: #888;
+		color: var(--text-faint);
 		max-width: 260px;
 		line-height: 1.5;
 	}
@@ -476,9 +476,9 @@
 	}
 
 	.empty-hints span {
-		background: #2a2a2a;
-		border: 1px solid #3a3a3a;
-		color: #777;
+		background: var(--hint-chip-bg);
+		border: 1px solid var(--hint-chip-border);
+		color: var(--hint-chip-text);
 		font-size: 0.78rem;
 		padding: 0.25rem 0.6rem;
 		border-radius: 999px;
@@ -488,9 +488,9 @@
 	}
 
 	.empty-hints span:hover {
-		background: #3a3a2a;
-		border-color: #ffa500;
-		color: #ffa500;
+		background: var(--bg-hover);
+		border-color: var(--accent);
+		color: var(--accent);
 	}
 
 	/* ---- Mensagens ---- */
@@ -503,20 +503,20 @@
 	}
 
 	.message.user {
-		background: #252525;
-		border-left: 3px solid #ffa500;
+		background: var(--msg-user-bg);
+		border-left: 3px solid var(--accent);
 		margin-left: 1.5rem;
-		color: #e0e0e0;
+		color: var(--text-primary);
 		white-space: pre-wrap;
 		font-size: 0.92rem;
 	}
 
 	.message.assistant {
-		background: #1e1e1e;
+		background: var(--msg-assistant-bg);
 		margin-right: 0.5rem;
-		color: #d8d8d8;
+		color: var(--text-primary);
 		font-size: 0.92rem;
-		border: 1px solid #2e2e2e;
+		border: 1px solid var(--msg-assistant-border);
 	}
 
 	.message.streaming {
@@ -525,23 +525,23 @@
 
 	/* Estilos para conteúdo markdown renderizado nas mensagens do assistente */
 	.message.assistant :global(strong) {
-		color: #ffd080;
+		color: var(--msg-strong);
 		font-weight: 700;
 	}
 
 	.message.assistant :global(em) {
-		color: #c0d0ff;
+		color: var(--msg-em);
 		font-style: italic;
 	}
 
 	.message.assistant :global(code) {
-		background: #2a2a2a;
-		border: 1px solid #3a3a3a;
+		background: var(--msg-code-bg);
+		border: 1px solid var(--msg-code-border);
 		padding: 0.1em 0.35em;
 		border-radius: 3px;
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 0.88em;
-		color: #80e0a0;
+		color: var(--text-code);
 	}
 
 	.message.assistant :global(ul),
@@ -556,7 +556,7 @@
 
 	.cursor {
 		animation: blink 0.8s infinite;
-		color: #ffa500;
+		color: var(--accent);
 		font-size: 0.9em;
 	}
 
@@ -572,11 +572,11 @@
 		gap: 0.3rem;
 		margin-top: 0.5rem;
 		padding: 0.3rem 0.5rem;
-		background: #1e2a1e;
-		border: 1px solid #2a4a2a;
+		background: var(--success-dim-bg);
+		border: 1px solid var(--success-border);
 		border-radius: 4px;
 		font-size: 0.78rem;
-		color: #70a870;
+		color: var(--success-dim-text);
 		font-style: italic;
 	}
 
@@ -584,7 +584,7 @@
 		width: 5px;
 		height: 5px;
 		border-radius: 50%;
-		background: #70a870;
+		background: var(--success-dim-text);
 		animation: statusPulse 1s infinite;
 		flex-shrink: 0;
 	}
@@ -601,7 +601,7 @@
 	.loading-indicator {
 		text-align: center;
 		padding: 0.75rem;
-		color: #ffa500;
+		color: var(--accent);
 		font-size: 1.5rem;
 		letter-spacing: 0.2em;
 	}
@@ -620,11 +620,11 @@
 
 	/* ---- Banner de erro ---- */
 	.error-banner {
-		background: #331818;
-		color: #ff7777;
+		background: var(--error-bg);
+		color: var(--error-text);
 		padding: 0.6rem 1.5rem;
 		font-size: 0.88rem;
-		border-top: 1px solid #552222;
+		border-top: 1px solid var(--error-border);
 		flex-shrink: 0;
 	}
 
@@ -633,25 +633,25 @@
 		display: flex;
 		gap: 0.5rem;
 		padding: 0.75rem 1.25rem;
-		background: #2a2a2a;
-		border-top: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-top: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.message-input {
 		flex: 1;
-		background: #1e1e1e;
-		border: 1px solid #4a4a4a;
+		background: var(--bg-input);
+		border: 1px solid var(--border-light);
 		padding: 0.65rem 1rem;
 		font-size: 0.95rem;
-		color: #e0e0e0;
+		color: var(--text-primary);
 		border-radius: 4px;
 		transition: border-color 0.2s;
 	}
 
 	.message-input:focus {
 		outline: none;
-		border-color: #ffa500;
+		border-color: var(--accent);
 	}
 
 	.message-input:disabled {
@@ -660,8 +660,8 @@
 	}
 
 	.btn-send {
-		background: #ffa500;
-		color: #1a1a1a;
+		background: var(--accent);
+		color: var(--accent-text-on);
 		border: none;
 		width: 40px;
 		height: 40px;
@@ -677,7 +677,7 @@
 	}
 
 	.btn-send:hover:not(:disabled) {
-		background: #ffb733;
+		background: var(--accent-hover);
 	}
 
 	.btn-send:disabled {
