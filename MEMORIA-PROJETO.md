@@ -9,7 +9,7 @@
 - **Nome do Projeto:** Yarner ("One who tells yarns/stories" + jogador)
 - **Owner:** Godoy
 - **Data de Início:** 2026-02-11
-- **Status Atual:** Épicos 1, 2, 3 ✅ COMPLETOS — Épico 4 em andamento
+- **Status Atual:** Épicos 1, 2 ✅ COMPLETOS — Épico 3 removido (LocationMap → AI Memory Notes) — Épico 4 em andamento
 - **Linguagem de Comunicação:** Português Brasileiro
 
 ---
@@ -45,11 +45,13 @@ Apenas Z-machine (.z3, .z4, .z5, .z8). Sem Glulx, sem multiplayer, sem backend c
 
 ---
 
-### Decisão 4: Game Status como Memória Persistente
+### Decisão 4: AI Memory Notes como Memória Persistente
 
-A IA mantém um JSON estruturado (`GameStatus`) com localização, inventário, objetivos, `locaisVisitados` e observações. Persiste em IndexedDB por jogo. Serve como memória entre sessões — não precisa reenviar o log inteiro.
+A IA mantém um "caderno de notas" (`AIMemory = string[]`) — lista de até 20 notas que ela gerencia via operações ADD/REMOVE/UPDATE. Persiste em IndexedDB por jogo. Serve como memória entre sessões — não precisa reenviar o log inteiro.
 
-Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não funcionam bem com modelos 8B). Parser com 4 padrões de fallback. Merge aditivo em `locaisVisitados` (nunca apaga dados existentes).
+Delimitadores: `MEMORY_UPDATE_START` / `MEMORY_UPDATE_END`. Parser com 1 regex + `applyMemoryOperations()`. Operações são processadas sequencialmente (REMOVE altera índices). Se a IA não incluir o bloco, a memória não muda.
+
+**Histórico:** Originalmente era um JSON estruturado (`GameStatus`) com 7 campos + 4 regex + JSON repair. Substituído na Sessão 9 por ser frágil com modelos menores e excessivamente complexo (~400 linhas de parsing).
 
 ---
 
@@ -212,21 +214,37 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 
 **Resultado:** ✅ Build OK, 170 testes passando.
 
+**AI Memory Notes (substituição do GameStatus JSON):**
+- Substituído `GameStatus` (7 campos, JSON aninhado) por `AIMemory = string[]` (lista de notas)
+- Removidos `tryRepairAndParseJSON()`, 4 regex patterns de parsing, `LocalVisitado` type
+- Criado `applyMemoryOperations()` — processa ADD/REMOVE/UPDATE sequencialmente (máx 20 notas)
+- `parseAIResponse()` reescrito com 1 regex (`MEMORY_UPDATE_START/END`)
+- System prompt reescrito: lista numerada de notas + instruções de operações (~25 linhas vs ~40)
+- Removido `LocationMap.svelte` (215 linhas) e terceira coluna do layout
+- Removidos `locationMapExpanded` store, botão 🗺️, painel de status (5 seções)
+- Adicionado painel 📝 "Anotações da IA" com `<ol>` numerada no AIAssistant
+- `SaveSlot.aiGameStatus` → `SaveSlot.aiMemory: AIMemory`
+- `restoreAIStatusFromSave()` → `restoreAIMemoryFromSave()`
+- `aiGameStatus` derived → `aiMemory` derived
+- Saldo: **-374 linhas** (11 arquivos, 422 inserções / 796 remoções)
+- **Motivação:** modelos menores falhavam com JSON estruturado; operações baseadas em texto são robustas
+
+**Resultado final da sessão:** ✅ Build OK, 182 testes passando, 99%+ coverage.
+
 ---
 
 ## 🎯 PRÓXIMOS PASSOS
 
-### ✅ COMPLETADO — Épicos 1, 2, 3 + Épico 4 (parcial)
+### ✅ COMPLETADO — Épicos 1, 2 + Épico 4 (parcial)
 - ✅ Jogo Z-machine funcional e testado (ifvms.js + WebGlk)
-- ✅ Assistente IA com streaming, game status persistido em IndexedDB
-- ✅ Mapa de locais visitados com saídas e notas
+- ✅ Assistente IA com streaming, AI Memory Notes persistidas em IndexedDB
 - ✅ Save/load de progresso com slots nomeados (cross-session)
 - ✅ UI/UX polish (PT-BR, drag-and-drop, confirmações inline, markdown)
 - ✅ Sistema de temas (4 temas: Dark Orange, Amber Terminal, Green Phosphor, Parchment)
-- ✅ Sistema de providers (LM Studio, Gemini, OpenAI, custom) com config na UI
+- ✅ Sistema de providers (LM Studio, Gemini, OpenAI, OpenRouter, custom) com config na UI
 - ✅ Debug mode, efeito typewriter, scroll inteligente
 - ✅ Save/load preserva chat da IA + correções de race conditions
-- ✅ Testes unitários (166 testes, 98.35% coverage)
+- ✅ Testes unitários (182 testes, 99%+ coverage)
 - ✅ CI via GitHub Actions (bloqueia merge em falha)
 - ✅ Refatoração em módulos testáveis (GameEngine + WebGlk)
 
@@ -247,22 +265,22 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 **Versão:** 0.5.0-alpha
 **Última Sessão:** 2026-03-01 (Sessão 9)
 **Branch:** main (CI ativo — GitHub Actions)
-**Testes:** 166 passando | 98.35% branch coverage
+**Testes:** 182 passando | 99%+ coverage
 **Repositório GitHub:** https://github.com/sataaa/yarner
 
 **Funcionalidades Completas e Testadas:**
 - ✅ Upload e carregamento de jogos z-machine (.z3, .z4, .z5, .z8) com drag-and-drop
 - ✅ Interface de jogo funcional (terminal-style, scroll interno, histórico de comandos ↑↓)
 - ✅ Captura de output via WebGlk custom (módulo testável, 100% coverage)
-- ✅ Assistente IA via API OpenAI-compatible (LM Studio, Ollama, OpenAI, etc.)
+- ✅ Assistente IA via API OpenAI-compatible (LM Studio, Ollama, OpenAI, OpenRouter, etc.)
 - ✅ Smart diff do game history (envia apenas novidades à IA)
-- ✅ Game status estruturado pela IA — persistido em IndexedDB
-- ✅ Mapa de locais visitados (saídas coloridas, notas por local, terceira coluna expansível)
+- ✅ AI Memory Notes — caderno de notas da IA (ADD/REMOVE/UPDATE) persistido em IndexedDB
+- ✅ Painel de anotações da IA (📝) com lista numerada
 - ✅ Save/load de progresso com slots nomeados
 - ✅ Markdown nas respostas da IA (com sanitização XSS)
 - ✅ Sistema de temas com 4 opções (persistido em localStorage)
 - ✅ Sistema de providers (LM Studio, Gemini, OpenAI, custom) com configuração na UI
-- ✅ Debug mode para diagnóstico de game status JSON
+- ✅ Debug mode para diagnóstico de AI memory
 - ✅ Efeito typewriter no jogo e no chat da IA
 - ✅ Save/load preserva chat da IA completo
 - ✅ Scroll inteligente (não puxa pra baixo quando lendo texto acima)
