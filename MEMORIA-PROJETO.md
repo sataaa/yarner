@@ -44,6 +44,13 @@ A IA mantém um "caderno de notas" (`AIMemory = string[]`) — lista de até 20 
 Causa raiz: reactive `$: if ($isGameLoaded && $currentGameName)` dispara `loadAIStateForGame` do IDB.
 Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funciona na tela inicial (gameName vazio).
 
+### Jogos Validados
+- Lista hardcoded em `src/lib/data/validatedGames.ts`: SHA-256 → nome canônico
+- Lookup: `getValidatedGameName(sha256)`, `isValidatedGame(sha256)`
+- **ifvms.js muta o ArrayBuffer in-place** (memória dinâmica do Z-Machine) — SHA de `slot.gameData` difere do original. Para resolver displayName em saves, buscar o SHA original na biblioteca pelo `gameName`.
+- Upload unificado: sempre adiciona à biblioteca primeiro, jogador inicia de lá
+- Upload duplicado: banner "já está na biblioteca" + highlight com flash CSS
+
 ---
 
 ## 🔄 HISTÓRICO DE SESSÕES
@@ -60,14 +67,15 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 | 8 | 2026-02-21 | Testes, CI e Refatoração | [docs/sessao-08.md](docs/sessao-08.md) |
 | 9 | 2026-03-01 | Temas, Providers, AI Memory Notes | [docs/sessao-09.md](docs/sessao-09.md) |
 | 10 | 2026-03-01 | Fechar Jogo, Biblioteca, Quick-Load | [docs/sessao-10.md](docs/sessao-10.md) |
+| 11 | 2026-03-01 | Jogos Validados, Upload Unificado, Sobrescrita de Saves | [docs/sessao-11.md](docs/sessao-11.md) |
 
 ---
 
 ## 📊 STATUS ATUAL
 
-**Versão:** 0.6.0-alpha
-**Última Sessão:** 10 (2026-03-01)
-**Testes:** 193 passando | 99%+ coverage
+**Versão:** 0.7.0-alpha
+**Última Sessão:** 11 (2026-03-01)
+**Testes:** 200 passando | 99%+ coverage
 **CI:** GitHub Actions (bloqueia merge em falha)
 
 ### ✅ Completado
@@ -82,12 +90,15 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 - Botão fechar jogo (voltar à tela inicial)
 - Biblioteca de jogos (IDB v3, SHA-256, ArrayBuffer persistido)
 - Quick-load na tela inicial (3 saves recentes por jogo)
+- Jogos validados (SHA-256 → nome canônico, badge ✓, Zork I e II)
+- Upload unificado (adiciona à biblioteca, detecção de duplicatas com highlight)
+- Sobrescrita de saves (botão rápido no painel de save)
+- Layout side-by-side (uploader + biblioteca na tela inicial)
 
 ### 📋 Backlog (não refinado)
-1. **Jogos validados** — mostrar na tela inicial jogos que já foram testados/validados (por enquanto só zork1.z5)
-2. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
-3. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
+1. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
+2. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
 
 ---
 
-**Última atualização:** 2026-03-01 (Sessão 10)
+**Última atualização:** 2026-03-01 (Sessão 11)

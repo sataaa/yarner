@@ -11,6 +11,8 @@
 		clearGameAIData,
 		computeSHA256,
 		addGameToLibrary,
+		getGameFromLibrary,
+		getGameLibrary,
 		updateLastPlayed,
 		saveAIMemory,
 		saveChatHistory,
@@ -18,23 +20,32 @@
 		type SaveSlot
 	} from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
+	import { getValidatedGameName } from '$lib/data/validatedGames';
 
 	let errorMessage = '';
+	let infoMessage = '';
 	let gameLibraryRef: GameLibrary;
+	let displayName = '';
+	let lastSlotName = '';
 
 	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
 		errorMessage = '';
+		infoMessage = '';
 
 		try {
-			// Zera o chat da IA antes de carregar — novo upload = nova jogatina
-			const gameName = filename.replace(/\.[^.]+$/, '');
-			aiChat.resetAIChat();
-			await clearGameAIData(gameName);
-			await gameState.loadGame(filename, data);
-
-			// Adiciona à biblioteca de jogos (upsert por SHA-256)
 			const sha256 = await computeSHA256(data);
+			const existing = await getGameFromLibrary(sha256);
+
+			if (existing) {
+				// Jogo já está na biblioteca — destaca na lista
+				infoMessage = 'Este jogo já está na sua biblioteca';
+				gameLibraryRef?.highlightGame(sha256);
+				return;
+			}
+
+			// Novo jogo — adiciona à biblioteca (sem iniciar)
+			const gameName = filename.replace(/\.[^.]+$/, '');
 			const now = new Date().toISOString();
 			const entry: GameLibraryEntry = {
 				sha256,
@@ -46,6 +57,7 @@
 				gameData: data
 			};
 			await addGameToLibrary(entry);
+			await gameLibraryRef?.refresh();
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
 			console.error('Error loading game:', error);
@@ -55,16 +67,21 @@
 	async function handleLoadFromLibrary(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
 		errorMessage = '';
+		infoMessage = '';
 
 		try {
-			// NÃO limpa AI data do IDB — ao recarregar da biblioteca, queremos
-			// preservar a memória e chat da IA da sessão anterior.
-			// O reactive loadAIStateForGame vai carregar os dados do IDB.
-			aiChat.resetAIChat();
-			await gameState.loadGame(filename, data);
-
-			// Atualiza lastPlayed na biblioteca
+			// Resolve displayName ANTES de carregar — evita flash do gameName no título
 			const sha256 = await computeSHA256(data);
+			displayName = getValidatedGameName(sha256) ?? '';
+			lastSlotName = '';
+
+			// Carregar da biblioteca = começar do zero (nova jogatina)
+			// Limpa AI data do IDB ANTES de loadGame — o reactive loadAIStateForGame
+			// vai disparar ao setar isGameLoaded e recarregar do IDB (que agora está vazio).
+			const gameName = filename.replace(/\.[^.]+$/, '');
+			aiChat.resetAIChat();
+			await clearGameAIData(gameName);
+			await gameState.loadGame(filename, data);
 			await updateLastPlayed(sha256);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
@@ -75,8 +92,16 @@
 	async function handleLoadFromSave(event: CustomEvent<{ slot: SaveSlot }>) {
 		const { slot } = event.detail;
 		errorMessage = '';
+		infoMessage = '';
 
 		try {
+			// Resolve displayName pelo SHA original na biblioteca (não do slot.gameData,
+			// que pode ter sido mutado pelo VM durante a execução do jogo).
+			const library = await getGameLibrary();
+			const libraryEntry = library.find(g => g.gameName === slot.gameName);
+			displayName = libraryEntry ? (getValidatedGameName(libraryEntry.sha256) ?? '') : '';
+			lastSlotName = slot.slotName;
+
 			// Persiste o estado da IA do slot no IDB ANTES de carregar.
 			// Não usa restoreAIMemoryFromSave() porque ela lê gameState.gameName
 			// que está vazio na tela inicial — o if(gameName) falha e não persiste.
@@ -84,10 +109,7 @@
 			await saveAIMemory(slot.gameName, slot.aiMemory ?? []);
 			await saveChatHistory(slot.gameName, slot.aiChatMessages ?? []);
 			await gameState.loadFromSaveSlot(slot);
-
-			// Atualiza lastPlayed na biblioteca
-			const sha256 = await computeSHA256(slot.gameData);
-			await updateLastPlayed(sha256);
+			if (libraryEntry) await updateLastPlayed(libraryEntry.sha256);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Falha ao restaurar o save';
 			console.error('Error loading save from library:', error);
@@ -120,17 +142,24 @@
 		</div>
 	{/if}
 
+	{#if infoMessage}
+		<div class="info-banner">
+			{infoMessage}
+			<button on:click={() => infoMessage = ''}>×</button>
+		</div>
+	{/if}
+
 	{#if !$isGameLoaded}
 		<div class="upload-screen">
 			<div class="upload-wrapper">
-				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
 				<FileUploader on:gameLoaded={handleGameLoaded} />
+				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
 			</div>
 		</div>
 	{:else}
 		<div class="container">
 			<div class="panel game-panel">
-				<GamePanel gameName={$currentGameName} />
+				<GamePanel gameName={$currentGameName} {displayName} bind:lastSlotName />
 			</div>
 
 			<div class="panel ai-panel">
@@ -214,6 +243,28 @@
 		line-height: 1;
 	}
 
+	.info-banner {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: var(--bg-elevated);
+		color: var(--accent);
+		border-bottom: 1px solid var(--accent);
+		padding: 0.6rem 1.5rem;
+		font-size: 0.9rem;
+		flex-shrink: 0;
+	}
+
+	.info-banner button {
+		background: none;
+		border: none;
+		color: var(--accent);
+		font-size: 1.3rem;
+		cursor: pointer;
+		padding: 0 0.25rem;
+		line-height: 1;
+	}
+
 	.upload-screen {
 		flex: 1;
 		display: flex;
@@ -221,13 +272,33 @@
 		justify-content: center;
 		background: var(--bg-base);
 		overflow-y: auto;
-		padding: 2rem 0;
+		padding: 2rem 1rem;
 	}
 
 	.upload-wrapper {
-		max-width: 600px;
+		display: flex;
+		gap: 1.5rem;
+		max-width: 1000px;
 		width: 100%;
-		padding: 0 1rem;
+		align-items: flex-start;
+	}
+
+	.upload-wrapper > :global(:first-child) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.upload-wrapper > :global(:last-child) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	@media (max-width: 768px) {
+		.upload-wrapper {
+			flex-direction: column;
+			max-width: 600px;
+			align-items: stretch;
+		}
 	}
 
 	.container {
