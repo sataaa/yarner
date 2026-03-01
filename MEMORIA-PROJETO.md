@@ -147,25 +147,48 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 
 ---
 
-### Sessão 9: 2026-03-01 — Sistema de Temas
+### Sessão 9: 2026-03-01 — Temas, Providers, UX Polish
 
-**Abordagem:** CSS custom properties (variáveis) no `:root`, com `data-theme` no `<html>`. Store Svelte (`themeStore.ts`) persiste tema em `localStorage`.
+**Sistema de Temas:**
+- CSS custom properties no `:root` com `data-theme` no `<html>`, persistido em localStorage
+- 4 temas: Dark Orange (default), Amber Terminal, Green Phosphor, Parchment
+- Botão cycle no header, todos os componentes migrados para `var(--nome)`
 
-**4 temas implementados:**
-1. 🌑 **Dark Orange** (default) — fundo escuro, acento laranja
-2. 💛 **Amber Terminal** — texto âmbar, estilo monitor CRT antigo
-3. 💚 **Green Phosphor** — verde fósforo, estilo terminal DOS/matrix
-4. 📜 **Parchment** — tema claro, cor de papel envelhecido
+**Sistema de Providers (Gemini Free Tier):**
+- `ProviderPreset` interface + `PROVIDER_PRESETS` em `claude.ts` — 4 presets (LM Studio, Gemini, OpenAI, Personalizado)
+- Endpoint Gemini é OpenAI-compatible: `generativelanguage.googleapis.com/v1beta/openai/chat/completions` (free tier: 250 req/dia)
+- `sendToAIStreaming` parametrizado com `model` (antes hardcoded `'local-model'`)
+- `aiChat.ts`: estado de provider (`providerId`, `apiUrl`, `model`), `setProvider()`, persistência localStorage
+- UI: painel ⚙️ no AIAssistant com dropdown de provider, API key, modelo, URL custom
+- Badge no header mostrando modelo + local/remoto
 
-**Arquivos criados/modificados:**
-- `src/lib/stores/themeStore.ts` — **NOVO** (store + persistência localStorage)
-- `src/routes/+layout.svelte` — ~60 variáveis CSS por tema (4 blocos `[data-theme]`)
-- `src/routes/+page.svelte` — seletor de tema (botão cycle) no header
-- 4 componentes atualizados: hex hardcoded → `var(--nome)` (GamePanel, AIAssistant, LocationMap, FileUploader)
+**Debug Mode:**
+- Toggle debug ON/OFF no painel de configurações
+- Mostra JSON do game status após cada resposta da IA
+- Mostra raw stream durante streaming (inclui bloco GAME_STATUS_JSON antes de ser stripado)
 
-**Decisão:** Botão cycle no header (clique para avançar ao próximo tema). Simples, sem dropdown, sem menu.
+**Efeito Typewriter:**
+- GamePanel: output do jogo revelado gradualmente (4 chars/frame) com cursor ▊ piscante
+- AIAssistant: streaming revelado via `requestAnimationFrame` (3 chars/frame), independente do tamanho dos chunks
+- Comandos (`>`) e loads em massa aparecem instantaneamente
 
-**Resultado:** ✅ Todos os 4 temas funcionando. Build OK, 159 testes passando.
+**Correções de Streaming (Gemini):**
+- `max_tokens: 1024 → 2048` — evita cortar o JSON de game status
+- Parser SSE com buffer de linhas incompletas — Gemini pode dividir uma `data:` line entre chunks
+
+**Correções de Scroll:**
+- GamePanel: auto-scroll só quando o usuário já está no fundo (margem 60px)
+- Typewriter scrolla a cada frame durante a animação
+- `prevOutputLength` reseta quando gameHistory encolhe (restart/new game)
+
+**Correções de Save/Load/Restart:**
+- `SaveSlot` agora inclui `aiChatMessages` — save/load preserva o chat da IA completo
+- Restart: `resetAIStateForRestart()` roda ANTES de `restartGame()` com `await`
+- Restart: `restartGame()` não seta mais `isLoaded = false` — evita unmount/remount dos componentes
+- Load: `restoreAIStatusFromSave()` persiste no IndexedDB ANTES de `loadFromSaveSlot()` — evita race condition com reactive `loadAIStateForGame`
+- Novo jogo (upload): limpa IndexedDB via `clearGameAIData()` antes de carregar
+
+**Resultado:** ✅ Build OK, 166 testes passando, 98.35% branch coverage.
 
 ---
 
@@ -178,7 +201,10 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 - ✅ Save/load de progresso com slots nomeados (cross-session)
 - ✅ UI/UX polish (PT-BR, drag-and-drop, confirmações inline, markdown)
 - ✅ Sistema de temas (4 temas: Dark Orange, Amber Terminal, Green Phosphor, Parchment)
-- ✅ Testes unitários (159 testes, 98.34% coverage)
+- ✅ Sistema de providers (LM Studio, Gemini, OpenAI, custom) com config na UI
+- ✅ Debug mode, efeito typewriter, scroll inteligente
+- ✅ Save/load preserva chat da IA + correções de race conditions
+- ✅ Testes unitários (166 testes, 98.35% coverage)
 - ✅ CI via GitHub Actions (bloqueia merge em falha)
 - ✅ Refatoração em módulos testáveis (GameEngine + WebGlk)
 
@@ -196,10 +222,10 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 
 ## 📊 STATUS ATUAL DO PROJETO
 
-**Versão:** 0.4.0-alpha
+**Versão:** 0.5.0-alpha
 **Última Sessão:** 2026-03-01 (Sessão 9)
 **Branch:** main (CI ativo — GitHub Actions)
-**Testes:** 159 passando | 98.34% branch coverage
+**Testes:** 166 passando | 98.35% branch coverage
 **Repositório GitHub:** https://github.com/sataaa/yarner
 
 **Funcionalidades Completas e Testadas:**
@@ -213,6 +239,11 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 - ✅ Save/load de progresso com slots nomeados
 - ✅ Markdown nas respostas da IA (com sanitização XSS)
 - ✅ Sistema de temas com 4 opções (persistido em localStorage)
+- ✅ Sistema de providers (LM Studio, Gemini, OpenAI, custom) com configuração na UI
+- ✅ Debug mode para diagnóstico de game status JSON
+- ✅ Efeito typewriter no jogo e no chat da IA
+- ✅ Save/load preserva chat da IA completo
+- ✅ Scroll inteligente (não puxa pra baixo quando lendo texto acima)
 
 **Pendente:**
 - ⬜ Deploy em produção

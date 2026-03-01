@@ -10,7 +10,7 @@
 	import { slide } from 'svelte/transition';
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
-	import { aiChat, aiGameStatus } from '$lib/stores/aiChat';
+	import { aiChat, aiGameStatus, aiMessages } from '$lib/stores/aiChat';
 
 	export let gameName: string = '';
 
@@ -37,15 +37,79 @@
 
 	// Subscribe to the store's gameHistory — single source of truth for output
 	let gameOutput: string[] = [];
+	let prevOutputLength = 0;
 	const unsubscribe = gameState.subscribe(state => {
+		// Reset tracker when history is cleared (restart, new game)
+		if (state.gameHistory.length < prevOutputLength) {
+			prevOutputLength = 0;
+			typingIndex = -1;
+		}
 		gameOutput = state.gameHistory;
 	});
 
-	// Auto-scroll to bottom when new output arrives
-	$: if (gameOutput.length > 0 && outputContainer) {
-		setTimeout(() => {
-			if (outputContainer) outputContainer.scrollTop = outputContainer.scrollHeight;
-		}, 10);
+	// ---- Typewriter effect for new game output ----
+	// When new entries appear in gameOutput, the last entry is revealed
+	// gradually via requestAnimationFrame for a terminal feel.
+	const GAME_CHARS_PER_FRAME = 4;
+	/** Index of the entry currently being typewritten (-1 = none) */
+	let typingIndex = -1;
+	/** How many characters of that entry are visible so far */
+	let typingCharsShown = 0;
+	let typewriterRaf = 0;
+
+	$: if (gameOutput.length > prevOutputLength && gameOutput.length > 0) {
+		const wasAtBottom = outputContainer
+			? outputContainer.scrollHeight - outputContainer.scrollTop - outputContainer.clientHeight < 60
+			: true;
+		prevOutputLength = gameOutput.length;
+
+		// Find the last new entry that isn't a command echo — typewrite it
+		const lastIdx = gameOutput.length - 1;
+		const lastEntry = gameOutput[lastIdx];
+		const isCommand = lastEntry.startsWith('>') || lastEntry.startsWith('\n>');
+
+		if (!isCommand && lastEntry.length > 0) {
+			typingIndex = lastIdx;
+			typingCharsShown = 0;
+			startGameTypewriter(wasAtBottom);
+		} else {
+			typingIndex = -1;
+			if (wasAtBottom) {
+				setTimeout(() => {
+					if (outputContainer) outputContainer.scrollTop = outputContainer.scrollHeight;
+				}, 10);
+			}
+		}
+	}
+
+	function startGameTypewriter(autoScroll: boolean) {
+		if (typewriterRaf) cancelAnimationFrame(typewriterRaf);
+		typewriterRaf = requestAnimationFrame(() => gameTypewriterTick(autoScroll));
+	}
+
+	function gameTypewriterTick(autoScroll: boolean) {
+		if (typingIndex < 0 || typingIndex >= gameOutput.length) {
+			typewriterRaf = 0;
+			return;
+		}
+		const full = gameOutput[typingIndex];
+		if (typingCharsShown < full.length) {
+			typingCharsShown += GAME_CHARS_PER_FRAME;
+			typingCharsShown = typingCharsShown;
+			typewriterRaf = requestAnimationFrame(() => {
+				// Scroll after Svelte re-renders (next frame) so the new content is measured
+				if (autoScroll && outputContainer) {
+					outputContainer.scrollTop = outputContainer.scrollHeight;
+				}
+				gameTypewriterTick(autoScroll);
+			});
+		} else {
+			typingIndex = -1;
+			typewriterRaf = 0;
+			if (autoScroll && outputContainer) {
+				outputContainer.scrollTop = outputContainer.scrollHeight;
+			}
+		}
 	}
 
 	onMount(() => {
@@ -117,9 +181,10 @@
 		commandHistory = [];
 		historyIndex = -1;
 		currentCommand = '';
+		// Zera status e chat da IA ANTES do restart — evita race condition
+		// com o reactive loadAIStateForGame que dispara quando isLoaded volta a true
+		await aiChat.resetAIStateForRestart();
 		await gameState.restartGame();
-		// Zera status e chat da IA — não são mais relevantes após o restart
-		aiChat.resetAIStateForRestart();
 	}
 
 	// ---- Save / Load helpers ----
@@ -152,8 +217,8 @@
 		if (!name) return;
 		isSaving = true;
 		try {
-			// Inclui o status atual da IA no slot para restaurar junto com o jogo
-			await gameState.saveGame(name, $aiGameStatus);
+			// Inclui o status e chat da IA no slot para restaurar junto com o jogo
+			await gameState.saveGame(name, $aiGameStatus, $aiMessages);
 			showSavePanel = false;
 			saveSlotName = '';
 			showFeedback(`Salvo: "${name}"`);
@@ -177,12 +242,14 @@
 		showLoadPanel = false;
 		pendingLoadSlot = null;
 		try {
+			// Persiste o estado da IA do slot no IndexedDB ANTES de carregar o jogo.
+			// Isso evita race condition: loadFromSaveSlot faz isLoaded=true que
+			// dispara o reactive loadAIStateForGame — que agora encontra os dados corretos.
+			await aiChat.restoreAIStatusFromSave(slot.aiGameStatus, slot.gameHistory.length, slot.aiChatMessages);
 			await gameState.loadFromSaveSlot(slot);
 			commandHistory = [];
 			historyIndex = -1;
 			currentCommand = '';
-			// Restaura o status da IA salvo no slot (localização, inventário, mapa, etc.)
-			await aiChat.restoreAIStatusFromSave(slot.aiGameStatus, slot.gameHistory.length);
 			showFeedback(`Carregado: "${slot.slotName}"`);
 		} catch (err) {
 			showFeedback(`Erro ao carregar: ${err}`);
@@ -213,6 +280,7 @@
 
 	onDestroy(() => {
 		unsubscribe();
+		if (typewriterRaf) cancelAnimationFrame(typewriterRaf);
 	});
 </script>
 
@@ -340,9 +408,9 @@
 				<p class="hint">O jogo começará em instantes.</p>
 			</div>
 		{:else}
-			{#each gameOutput as output}
+			{#each gameOutput as output, i}
 				<div class="output-line" class:command={output.startsWith('>')}>
-					{output}
+					{i === typingIndex ? output.slice(0, typingCharsShown) : output}{#if i === typingIndex}<span class="cursor">▊</span>{/if}
 				</div>
 			{/each}
 		{/if}
@@ -725,6 +793,17 @@
 	.output-line.command {
 		color: var(--accent);
 		font-weight: 600;
+	}
+
+	.cursor {
+		animation: blink 0.8s infinite;
+		color: var(--accent);
+		font-size: 0.9em;
+	}
+
+	@keyframes blink {
+		0%, 50% { opacity: 1; }
+		51%, 100% { opacity: 0; }
 	}
 
 	.welcome-message {
