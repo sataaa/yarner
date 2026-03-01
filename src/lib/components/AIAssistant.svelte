@@ -133,7 +133,7 @@
 
 	$: if (($aiMessages.length > 0 || displayedStreamText) && messagesContainer) {
 		setTimeout(() => {
-			messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}, 10);
 	}
 

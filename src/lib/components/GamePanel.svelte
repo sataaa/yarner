@@ -13,6 +13,8 @@
 	import { aiChat, aiMemory, aiMessages } from '$lib/stores/aiChat';
 
 	export let gameName: string = '';
+	export let displayName: string = '';
+	export let lastSlotName: string = '';
 
 	let outputContainer: HTMLDivElement;
 	let commandInput: HTMLInputElement;
@@ -35,6 +37,7 @@
 	let showCloseConfirm = false;
 	let pendingLoadSlot: SaveSlot | null = null;
 	let deletingSlotName: string | null = null;
+	let showOverwriteConfirm = false;
 
 	// Subscribe to the store's gameHistory — single source of truth for output
 	let gameOutput: string[] = [];
@@ -223,6 +226,7 @@
 		showLoadPanel = false;
 		showRestartConfirm = false;
 		saveSlotName = '';
+		showOverwriteConfirm = false;
 		showSavePanel = true;
 		gameState.getSaveSlotList().then(s => { saveSlots = s; });
 		setTimeout(() => { slotNameInput?.focus(); }, 30);
@@ -235,9 +239,27 @@
 		try {
 			// Inclui o status e chat da IA no slot para restaurar junto com o jogo
 			await gameState.saveGame(name, $aiMemory, $aiMessages);
+			lastSlotName = name;
 			showSavePanel = false;
 			saveSlotName = '';
 			showFeedback(`Salvo: "${name}"`);
+		} catch (err) {
+			showFeedback(`Erro ao salvar: ${err}`);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	/** Sobrescreve o último slot carregado com o estado atual */
+	async function confirmOverwrite() {
+		if (!lastSlotName) return;
+		isSaving = true;
+		showOverwriteConfirm = false;
+		try {
+			await gameState.saveGame(lastSlotName, $aiMemory, $aiMessages);
+			showSavePanel = false;
+			saveSlotName = '';
+			showFeedback(`Salvo: "${lastSlotName}"`);
 		} catch (err) {
 			showFeedback(`Erro ao salvar: ${err}`);
 		} finally {
@@ -263,6 +285,7 @@
 			// dispara o reactive loadAIStateForGame — que agora encontra os dados corretos.
 			await aiChat.restoreAIMemoryFromSave(slot.aiMemory, slot.gameHistory.length, slot.aiChatMessages);
 			await gameState.loadFromSaveSlot(slot);
+			lastSlotName = slot.slotName;
 			commandHistory = [];
 			historyIndex = -1;
 			currentCommand = '';
@@ -302,7 +325,7 @@
 
 <div class="game-panel">
 	<div class="game-header">
-		<h2 class="game-title">{gameName || 'Interactive Fiction'}</h2>
+		<h2 class="game-title">{displayName || gameName || 'Interactive Fiction'}</h2>
 		<div class="game-controls">
 			<button class="btn-icon" on:click={openSavePanel} title="Salvar jogo" disabled={isLoadingSlot}>
 				💾
@@ -352,6 +375,23 @@
 	{#if showSavePanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-title">💾 Salvar Jogo</div>
+
+			{#if lastSlotName}
+				{#if showOverwriteConfirm}
+					<div class="overwrite-row confirm-strip-inline" transition:slide={{ duration: 120 }}>
+						<span>Sobrescrever <strong>"{lastSlotName}"</strong>?</span>
+						<div class="confirm-actions">
+							<button class="btn-confirm" on:click={confirmOverwrite} disabled={isSaving}>Sobrescrever</button>
+							<button class="btn-cancel-sm" on:click={() => showOverwriteConfirm = false}>Cancelar</button>
+						</div>
+					</div>
+				{:else}
+					<button class="overwrite-btn" on:click={() => showOverwriteConfirm = true} disabled={isSaving}>
+						💾 Salvar em "{lastSlotName}"
+					</button>
+				{/if}
+			{/if}
+
 			<div class="panel-row">
 				<input
 					class="slot-input"
@@ -649,6 +689,30 @@
 
 	.btn-cancel:hover {
 		background: var(--btn-hover);
+	}
+
+	.overwrite-btn {
+		width: 100%;
+		padding: 0.45rem 0.75rem;
+		margin-bottom: 0.5rem;
+		background: var(--btn-bg);
+		border: 1px solid var(--border-light);
+		color: var(--text-secondary);
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.85rem;
+		text-align: left;
+		transition: background 0.2s, border-color 0.2s;
+	}
+
+	.overwrite-btn:hover:not(:disabled) {
+		background: var(--btn-hover);
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
+	.overwrite-row {
+		margin-bottom: 0.5rem;
 	}
 
 	.overwrite-warn {

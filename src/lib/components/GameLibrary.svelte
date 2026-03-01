@@ -9,6 +9,7 @@
 		type GameLibraryEntry,
 		type SaveSlot
 	} from '$lib/stores/aiPersistence';
+	import { getValidatedGameName, isValidatedGame } from '$lib/data/validatedGames';
 
 	const dispatch = createEventDispatcher<{
 		loadFromLibrary: { filename: string; data: ArrayBuffer };
@@ -19,12 +20,32 @@
 	/** Últimos 3 saves de cada jogo, indexados por gameName */
 	let savesPerGame: Record<string, SaveSlot[]> = {};
 	let deletingSha: string | null = null;
+	let highlightedSha: string | null = null;
+
+	/** Retorna o nome canônico (se validado) ou o gameName original */
+	function displayName(game: GameLibraryEntry): string {
+		return getValidatedGameName(game.sha256) ?? game.gameName;
+	}
 
 	onMount(loadLibrary);
 
 	/** Recarregar a lista (chamado pelo parent após adicionar jogo à biblioteca) */
 	export async function refresh() {
 		await loadLibrary();
+	}
+
+	/** Destaca um jogo na lista com scroll + flash (chamado pelo parent em upload duplicado) */
+	export function highlightGame(sha256: string) {
+		highlightedSha = sha256;
+		// Aguarda o DOM atualizar antes de scrollar
+		setTimeout(() => {
+			const el = document.querySelector(`[data-sha="${sha256}"]`);
+			el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}, 50);
+		// Remove o highlight após a animação
+		setTimeout(() => {
+			highlightedSha = null;
+		}, 2000);
 	}
 
 	async function loadLibrary() {
@@ -92,19 +113,22 @@
 		<h4>Jogos Recentes</h4>
 		<div class="library-list">
 			{#each games as game (game.sha256)}
-				<div class="library-item-wrapper" transition:slide={{ duration: 150 }}>
+				<div class="library-item-wrapper" class:highlighted={highlightedSha === game.sha256} data-sha={game.sha256} transition:slide={{ duration: 150 }}>
 					<div class="library-item" class:confirming={deletingSha === game.sha256}>
 						{#if deletingSha === game.sha256}
-							<span class="delete-confirm-text">Remover "{game.gameName}"?</span>
+							<span class="delete-confirm-text">Remover "{displayName(game)}"?</span>
 							<div class="item-actions">
 								<button class="btn-danger-sm" on:click={() => doDelete(game.sha256)}>Remover</button>
 								<button class="btn-cancel-sm" on:click={() => deletingSha = null}>Cancelar</button>
 							</div>
 						{:else}
-							<button class="library-game-btn" on:click={() => loadGame(game)} title="Carregar {game.gameName}">
+							<button class="library-game-btn" on:click={() => loadGame(game)} title="Carregar {displayName(game)}">
 								<span class="game-icon">🎮</span>
 								<div class="game-info">
-									<span class="game-name">{game.gameName}</span>
+									<span class="game-name">
+										{#if isValidatedGame(game.sha256)}<span class="validated-badge" title="Verificado como jogável no Yarner">✓</span>{/if}
+										{displayName(game)}
+									</span>
 									<span class="game-meta">{formatSize(game.fileSize)} · {formatDate(game.lastPlayed)}</span>
 								</div>
 							</button>
@@ -133,7 +157,6 @@
 
 <style>
 	.game-library {
-		margin-top: 1.5rem;
 		padding: 1.5rem;
 		background: var(--bg-elevated);
 		border-radius: 8px;
@@ -162,6 +185,21 @@
 
 	.library-item-wrapper:hover {
 		border-color: var(--accent);
+	}
+
+	.library-item-wrapper.highlighted {
+		animation: highlight-flash 2s ease-out;
+	}
+
+	@keyframes highlight-flash {
+		0%, 20% {
+			border-color: var(--accent);
+			box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
+		}
+		100% {
+			border-color: var(--border);
+			box-shadow: none;
+		}
 	}
 
 	.library-item {
@@ -215,6 +253,12 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.validated-badge {
+		color: var(--accent);
+		font-weight: 700;
+		margin-right: 0.25rem;
 	}
 
 	.game-meta {
