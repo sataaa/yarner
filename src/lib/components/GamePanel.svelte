@@ -32,6 +32,7 @@
 
 	// ---- Confirmações inline (sem confirm() nativo) ----
 	let showRestartConfirm = false;
+	let showCloseConfirm = false;
 	let pendingLoadSlot: SaveSlot | null = null;
 	let deletingSlotName: string | null = null;
 
@@ -169,9 +170,24 @@
 		gameState.clearHistory();
 	}
 
+	// Botão de fechar jogo — mostra confirmação inline
+	function requestCloseGame() {
+		showCloseConfirm = true;
+		showRestartConfirm = false;
+		showSavePanel = false;
+		showLoadPanel = false;
+	}
+
+	function doCloseGame() {
+		showCloseConfirm = false;
+		aiChat.resetAIChat();
+		gameState.unloadGame();
+	}
+
 	// Botão de restart — mostra confirmação inline
 	function requestRestart() {
 		showRestartConfirm = true;
+		showCloseConfirm = false;
 		showSavePanel = false;
 		showLoadPanel = false;
 	}
@@ -300,11 +316,25 @@
 			<button class="btn-icon" on:click={requestRestart} title="Reiniciar jogo">
 				🔄
 			</button>
+			<button class="btn-icon" on:click={requestCloseGame} title="Fechar jogo">
+				❌
+			</button>
 		</div>
 	</div>
 
 	{#if saveMessage}
 		<div class="save-feedback" transition:slide={{ duration: 150 }}>{saveMessage}</div>
+	{/if}
+
+	<!-- Confirmação inline de fechar jogo -->
+	{#if showCloseConfirm}
+		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
+			<span>⚠️ Fechar o jogo e voltar à tela inicial?</span>
+			<div class="confirm-actions">
+				<button class="btn-danger" on:click={doCloseGame}>Fechar</button>
+				<button class="btn-cancel-sm" on:click={() => showCloseConfirm = false}>Cancelar</button>
+			</div>
+		</div>
 	{/if}
 
 	<!-- Confirmação inline de restart -->
