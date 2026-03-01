@@ -76,10 +76,13 @@ Causa raiz: reactive `$: if ($isGameLoaded && $currentGameName)` dispara `loadAI
 - Debug mode, scroll inteligente
 - Testes unitários + CI
 
-### 📋 Pendente
-- Deploy em produção (Vercel/Netlify)
-- Sugestões proativas da IA
-- Testes com outros jogos além de Zork I
+### 📋 Backlog (não refinado)
+1. **Botão fechar jogo** — voltar à tela inicial para carregar outro jogo
+2. **Biblioteca de jogos na tela inicial** — guardar jogos já carregados (identificação SHA), mostrar lista com botão direto para recarregar, remover da lista (x), avisar quando arquivo original não existe mais
+3. **Quick-load na tela inicial** — mostrar últimos 3 saves de cada jogo na biblioteca, permitindo carregar jogo + save direto da tela inicial
+4. **Jogos validados** — mostrar na tela inicial jogos que já foram testados/validados (por enquanto só zork1.z5)
+5. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
+6. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
 
 ---
 
