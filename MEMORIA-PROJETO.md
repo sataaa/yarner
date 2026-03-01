@@ -190,6 +190,28 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 
 **Resultado:** ✅ Build OK, 166 testes passando, 98.35% branch coverage.
 
+**Limpeza do Repositório:**
+- `.claude/`, `_bmad/`, `bkp/`, `coverage/` adicionados ao `.gitignore`
+- `git-filter-repo` removeu 319 arquivos desses diretórios de todo o histórico (33 commits reescritos)
+- Force push no main — repositório limpo retroativamente
+
+**OpenRouter como 5º Provider:**
+- Preset adicionado em `claude.ts` — endpoint `openrouter.ai/api/v1`, modelo default `google/gemma-3-27b-it:free`
+- Free tier compartilhado: modelos podem retornar 429 em horários de pico (depende de providers upstream como Venice)
+
+**Dropdown Dinâmico de Modelos:**
+- `fetchAvailableModels()` em `claude.ts` — busca modelos da API do provider em tempo real
+- Gemini: `GET /v1beta/models?key=` filtra por `generateContent`
+- OpenRouter: `GET /api/v1/models` filtra por `:free`
+- UI: dropdown `<select>` quando há modelos disponíveis, input texto quando não há
+- Carrega ao abrir settings, trocar provider ou salvar API key
+
+**Gemma 3 27B como Default do Gemini:**
+- Trocado de `gemini-2.5-flash` para `gemma-3-27b-it` — quota diária muito maior (~14k vs 250 RPD)
+- Gemma não suporta `system` role — código detecta modelo gemma e injeta system prompt como user/assistant
+
+**Resultado:** ✅ Build OK, 170 testes passando.
+
 ---
 
 ## 🎯 PRÓXIMOS PASSOS
