@@ -5,7 +5,7 @@
 	 * Connects to an OpenAI-compatible API (LM Studio, Ollama, OpenAI, etc.)
 	 * Shows chat interface directly — no API key required for local servers.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import {
 		aiMessages,
@@ -15,8 +15,12 @@
 		aiStreamingContent,
 		aiError,
 		aiChat,
+		aiProviderId,
+		aiApiUrl,
+		aiModel,
 		locationMapExpanded
 	} from '$lib/stores/aiChat';
+	import { PROVIDER_PRESETS } from '$lib/api/claude';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import LocationMap from './LocationMap.svelte';
 
@@ -24,6 +28,49 @@
 	let messagesContainer: HTMLDivElement;
 	let showGameStatus = false;
 	let showLocationMap = false;
+	let showSettings = false;
+	let debugMode = false;
+
+	// Local form state for settings (synced from store)
+	let settingsApiKey = '';
+	let settingsModel = '';
+	let settingsApiUrl = '';
+
+	/** Sync local form fields when settings panel opens */
+	function openSettings() {
+		showSettings = !showSettings;
+		if (showSettings) {
+			settingsApiKey = localStorage.getItem('yarner-api-key') || '';
+			settingsModel = $aiModel;
+			settingsApiUrl = $aiApiUrl;
+		}
+	}
+
+	function handleProviderChange(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		const preset = PROVIDER_PRESETS.find((p) => p.id === select.value);
+		if (preset) {
+			aiChat.setProvider(preset.id);
+			// Update local form fields with preset defaults
+			settingsModel = preset.defaultModel;
+			settingsApiUrl = preset.apiUrl;
+		}
+	}
+
+	function handleApiKeySave() {
+		aiChat.setApiKey(settingsApiKey.trim());
+	}
+
+	function handleModelSave() {
+		aiChat.setProvider($aiProviderId, undefined, settingsModel.trim());
+	}
+
+	function handleApiUrlSave() {
+		aiChat.setProvider($aiProviderId, settingsApiUrl.trim());
+	}
+
+	$: currentPreset = PROVIDER_PRESETS.find((p) => p.id === $aiProviderId);
+	$: providerRequiresKey = currentPreset?.requiresKey ?? false;
 
 	// Quando o mapa expande para terceira coluna, fecha o modo inline
 	$: if ($locationMapExpanded) showLocationMap = false;
@@ -46,7 +93,51 @@
 	/** Detecta quando o streaming está na fase de receber o JSON de status (invisível ao usuário) */
 	$: isUpdatingStatus = $aiIsStreaming && $aiStreamingContent.includes('GAME_STATUS_JSON_START');
 
-	$: if (($aiMessages.length > 0 || $aiStreamingContent) && messagesContainer) {
+	// ---- Typewriter effect ----
+	// The actual streaming content arrives in large chunks (especially from Gemini).
+	// We reveal it gradually via a display buffer that catches up using requestAnimationFrame.
+	let displayedStreamText = '';
+	let typewriterRaf = 0;
+	/** How many characters to reveal per animation frame */
+	const CHARS_PER_FRAME = 3;
+
+	$: if ($aiStreamingContent) {
+		startTypewriter();
+	}
+
+	// Reset when streaming ends
+	$: if (!$aiIsStreaming) {
+		cancelAnimationFrame(typewriterRaf);
+		typewriterRaf = 0;
+		displayedStreamText = '';
+	}
+
+	function startTypewriter() {
+		if (typewriterRaf) return; // already running
+		typewriterRaf = requestAnimationFrame(typewriterTick);
+	}
+
+	function typewriterTick() {
+		const target = $aiStreamingContent;
+		if (!target || !$aiIsStreaming) {
+			typewriterRaf = 0;
+			return;
+		}
+		if (displayedStreamText.length < target.length) {
+			// Reveal a few characters per frame for smooth animation
+			displayedStreamText = target.slice(0, displayedStreamText.length + CHARS_PER_FRAME);
+			typewriterRaf = requestAnimationFrame(typewriterTick);
+		} else {
+			// Caught up — wait for more content
+			typewriterRaf = 0;
+		}
+	}
+
+	onDestroy(() => {
+		if (typewriterRaf) cancelAnimationFrame(typewriterRaf);
+	});
+
+	$: if (($aiMessages.length > 0 || displayedStreamText) && messagesContainer) {
 		setTimeout(() => {
 			messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}, 10);
@@ -137,7 +228,7 @@
 <div class="ai-assistant">
 	<!-- Cabeçalho do chat -->
 	<div class="chat-header">
-		<h2>Assistente IA</h2>
+		<h2>Assistente IA <span class="model-badge" class:remote={currentPreset?.requiresKey}>{$aiModel}{#if currentPreset?.requiresKey} · remoto{:else} · local{/if}</span></h2>
 		<div class="header-controls">
 			<button
 				class="btn-icon"
@@ -163,8 +254,82 @@
 			>
 				🗑️
 			</button>
+			<button
+				class="btn-icon"
+				class:active={showSettings}
+				on:click={openSettings}
+				title="Configurações de IA"
+			>
+				⚙️
+			</button>
 		</div>
 	</div>
+
+	<!-- Painel de configurações de IA (colapsável) -->
+	{#if showSettings}
+		<div class="settings-panel" transition:slide={{ duration: 200 }}>
+			<div class="settings-field">
+				<label for="provider-select">Provider</label>
+				<select id="provider-select" value={$aiProviderId} on:change={handleProviderChange}>
+					{#each PROVIDER_PRESETS as preset}
+						<option value={preset.id}>{preset.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			{#if providerRequiresKey}
+				<div class="settings-field">
+					<label for="api-key-input">API Key</label>
+					<div class="input-row">
+						<input
+							id="api-key-input"
+							type="password"
+							bind:value={settingsApiKey}
+							on:blur={handleApiKeySave}
+							placeholder="Cole sua API key aqui"
+						/>
+					</div>
+					{#if $aiProviderId === 'gemini'}
+						<p class="settings-hint">
+							Pegue sua key grátis em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="settings-field">
+				<label for="model-input">Modelo</label>
+				<input
+					id="model-input"
+					type="text"
+					bind:value={settingsModel}
+					on:blur={handleModelSave}
+					placeholder="Nome do modelo"
+				/>
+			</div>
+
+			{#if $aiProviderId === 'custom'}
+				<div class="settings-field">
+					<label for="url-input">URL da API</label>
+					<input
+						id="url-input"
+						type="text"
+						bind:value={settingsApiUrl}
+						on:blur={handleApiUrlSave}
+						placeholder="https://..."
+					/>
+				</div>
+			{/if}
+
+			<div class="settings-field settings-toggle">
+				<label for="debug-toggle">Debug</label>
+				<label class="toggle-switch">
+					<input id="debug-toggle" type="checkbox" bind:checked={debugMode} />
+					<span class="toggle-label">{debugMode ? 'ON' : 'OFF'}</span>
+				</label>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Painel de status do jogo (colapsável) -->
 	{#if showGameStatus}
@@ -261,11 +426,11 @@
 			</div>
 		{/each}
 
-		<!-- Resposta em streaming (ao vivo) -->
-		{#if $aiIsStreaming && $aiStreamingContent}
+		<!-- Resposta em streaming (ao vivo, com typewriter) -->
+		{#if $aiIsStreaming && displayedStreamText}
 			<div class="message assistant streaming">
 				<div class="message-content">
-					{@html renderMarkdown(stripStatusBlock($aiStreamingContent))}{#if !isUpdatingStatus}<span class="cursor">▊</span>{/if}
+					{@html renderMarkdown(stripStatusBlock(displayedStreamText))}{#if !isUpdatingStatus}<span class="cursor">▊</span>{/if}
 				</div>
 				{#if isUpdatingStatus}
 					<div class="status-updating">
@@ -275,6 +440,22 @@
 						Atualizando status do jogo...
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		<!-- Debug: game status JSON atualizado -->
+		{#if debugMode && !$aiIsStreaming && $aiMessages.length > 0}
+			<div class="debug-block">
+				<div class="debug-header">🐛 Game Status (debug)</div>
+				<pre class="debug-json">{JSON.stringify($aiGameStatus, null, 2)}</pre>
+			</div>
+		{/if}
+
+		<!-- Debug: raw streaming (mostra o JSON block antes de ser stripado) -->
+		{#if debugMode && $aiIsStreaming && $aiStreamingContent}
+			<div class="debug-block">
+				<div class="debug-header">🐛 Raw stream</div>
+				<pre class="debug-json">{$aiStreamingContent}</pre>
 			</div>
 		{/if}
 
@@ -338,6 +519,24 @@
 		font-size: 1rem;
 		color: var(--accent);
 		font-weight: 600;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.model-badge {
+		font-size: 0.68rem;
+		font-weight: 500;
+		color: var(--text-faint);
+		background: var(--btn-bg);
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		white-space: nowrap;
+	}
+
+	.model-badge.remote {
+		color: var(--success-dim-text);
+		background: var(--success-dim-bg);
 	}
 
 	.header-controls {
@@ -368,6 +567,131 @@
 	.btn-icon:disabled {
 		opacity: 0.3;
 		cursor: not-allowed;
+	}
+
+	/* ---- Debug ---- */
+	.debug-block {
+		margin: 0.5rem 0;
+		border: 1px solid var(--accent);
+		border-radius: 6px;
+		overflow: hidden;
+		opacity: 0.85;
+	}
+
+	.debug-header {
+		background: var(--accent-dim);
+		color: var(--accent);
+		font-size: 0.72rem;
+		font-weight: 700;
+		padding: 0.25rem 0.6rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.debug-json {
+		background: var(--bg-base);
+		color: var(--text-secondary);
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.72rem;
+		line-height: 1.4;
+		padding: 0.5rem 0.6rem;
+		margin: 0;
+		max-height: 240px;
+		overflow-y: auto;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	/* ---- Toggle switch ---- */
+	.settings-toggle {
+		flex-direction: row !important;
+		align-items: center;
+		gap: 0.5rem !important;
+	}
+
+	.toggle-switch {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		cursor: pointer;
+	}
+
+	.toggle-switch input {
+		accent-color: var(--accent);
+		width: 16px;
+		height: 16px;
+		cursor: pointer;
+	}
+
+	.toggle-label {
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+	}
+
+	/* ---- Painel de configurações ---- */
+	.settings-panel {
+		background: var(--bg-panel);
+		border-bottom: 1px solid var(--border);
+		padding: 0.75rem 1.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		flex-shrink: 0;
+	}
+
+	.settings-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.settings-field label {
+		font-size: 0.75rem;
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: 600;
+	}
+
+	.settings-field select,
+	.settings-field input {
+		background: var(--bg-input);
+		border: 1px solid var(--border-light);
+		color: var(--text-primary);
+		padding: 0.45rem 0.65rem;
+		border-radius: 4px;
+		font-size: 0.88rem;
+		width: 100%;
+	}
+
+	.settings-field select:focus,
+	.settings-field input:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+
+	.input-row {
+		display: flex;
+		gap: 0.4rem;
+	}
+
+	.input-row input {
+		flex: 1;
+	}
+
+	.settings-hint {
+		margin: 0.15rem 0 0;
+		font-size: 0.75rem;
+		color: var(--text-faint);
+	}
+
+	.settings-hint a {
+		color: var(--accent);
+		text-decoration: none;
+	}
+
+	.settings-hint a:hover {
+		text-decoration: underline;
 	}
 
 	/* ---- Painel de status do jogo ---- */
