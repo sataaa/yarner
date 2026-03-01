@@ -78,7 +78,7 @@
 	.location-map {
 		display: flex;
 		flex-direction: column;
-		background: #1e1e1e;
+		background: var(--bg-panel);
 		overflow: hidden;
 	}
 
@@ -92,21 +92,21 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.6rem 1rem;
-		background: #2a2a2a;
-		border-bottom: 1px solid #3a3a3a;
+		background: var(--bg-elevated);
+		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
 	}
 
 	.map-title {
 		font-size: 0.9rem;
-		color: #ffa500;
+		color: var(--accent);
 		font-weight: 600;
 	}
 
 	.btn-expand {
-		background: #3a3a3a;
+		background: var(--btn-bg);
 		border: none;
-		color: #e0e0e0;
+		color: var(--text-primary);
 		padding: 0.25rem 0.5rem;
 		border-radius: 4px;
 		cursor: pointer;
@@ -115,14 +115,14 @@
 	}
 
 	.btn-expand:hover {
-		background: #4a4a4a;
+		background: var(--btn-hover);
 	}
 
 	/* ---- Empty state ---- */
 	.empty-map {
 		padding: 1.5rem 1rem;
 		text-align: center;
-		color: #888;
+		color: var(--text-faint);
 		font-size: 0.85rem;
 	}
 
@@ -132,7 +132,7 @@
 
 	.hint {
 		font-style: italic;
-		color: #666;
+		color: var(--text-faint);
 	}
 
 	/* ---- Locations list ---- */
@@ -147,11 +147,11 @@
 	}
 
 	.locations-list::-webkit-scrollbar-track {
-		background: #2a2a2a;
+		background: var(--scrollbar-track);
 	}
 
 	.locations-list::-webkit-scrollbar-thumb {
-		background: #4a4a4a;
+		background: var(--scrollbar-thumb);
 		border-radius: 4px;
 	}
 
@@ -159,24 +159,24 @@
 		padding: 0.6rem 0.75rem;
 		margin-bottom: 0.4rem;
 		border-radius: 6px;
-		background: #252525;
-		border-left: 3px solid #3a3a3a;
+		background: var(--msg-user-bg);
+		border-left: 3px solid var(--border);
 	}
 
 	.location-entry.current {
-		border-left-color: #ffa500;
-		background: #2a2418;
+		border-left-color: var(--accent);
+		background: var(--location-current-bg);
 	}
 
 	.location-name {
 		font-size: 0.9rem;
 		font-weight: 600;
-		color: #e0e0e0;
+		color: var(--text-primary);
 		margin-bottom: 0.35rem;
 	}
 
 	.here-marker {
-		color: #ffa500;
+		color: var(--accent);
 		margin-right: 0.3rem;
 	}
 
@@ -192,13 +192,13 @@
 		font-size: 0.75rem;
 		padding: 0.15rem 0.45rem;
 		border-radius: 3px;
-		background: #3a2a2a;
-		color: #aaa;
+		background: var(--location-exit-bg);
+		color: var(--text-secondary);
 	}
 
 	.exit-tag.explored {
-		background: #1e3a2a;
-		color: #6dbb8a;
+		background: var(--location-exit-explored-bg);
+		color: var(--location-exit-explored-text);
 	}
 
 	/* ---- Notes ---- */
@@ -206,7 +206,7 @@
 		margin: 0.2rem 0 0;
 		padding-left: 1rem;
 		font-size: 0.78rem;
-		color: #999;
+		color: var(--text-secondary);
 	}
 
 	.location-notes li {

@@ -147,6 +147,28 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 
 ---
 
+### Sessão 9: 2026-03-01 — Sistema de Temas
+
+**Abordagem:** CSS custom properties (variáveis) no `:root`, com `data-theme` no `<html>`. Store Svelte (`themeStore.ts`) persiste tema em `localStorage`.
+
+**4 temas implementados:**
+1. 🌑 **Dark Orange** (default) — fundo escuro, acento laranja
+2. 💛 **Amber Terminal** — texto âmbar, estilo monitor CRT antigo
+3. 💚 **Green Phosphor** — verde fósforo, estilo terminal DOS/matrix
+4. 📜 **Parchment** — tema claro, cor de papel envelhecido
+
+**Arquivos criados/modificados:**
+- `src/lib/stores/themeStore.ts` — **NOVO** (store + persistência localStorage)
+- `src/routes/+layout.svelte` — ~60 variáveis CSS por tema (4 blocos `[data-theme]`)
+- `src/routes/+page.svelte` — seletor de tema (botão cycle) no header
+- 4 componentes atualizados: hex hardcoded → `var(--nome)` (GamePanel, AIAssistant, LocationMap, FileUploader)
+
+**Decisão:** Botão cycle no header (clique para avançar ao próximo tema). Simples, sem dropdown, sem menu.
+
+**Resultado:** ✅ Todos os 4 temas funcionando. Build OK, 159 testes passando.
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS
 
 ### ✅ COMPLETADO — Épicos 1, 2, 3 + Épico 4 (parcial)
@@ -155,6 +177,7 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 - ✅ Mapa de locais visitados com saídas e notas
 - ✅ Save/load de progresso com slots nomeados (cross-session)
 - ✅ UI/UX polish (PT-BR, drag-and-drop, confirmações inline, markdown)
+- ✅ Sistema de temas (4 temas: Dark Orange, Amber Terminal, Green Phosphor, Parchment)
 - ✅ Testes unitários (159 testes, 98.34% coverage)
 - ✅ CI via GitHub Actions (bloqueia merge em falha)
 - ✅ Refatoração em módulos testáveis (GameEngine + WebGlk)
@@ -174,7 +197,7 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 ## 📊 STATUS ATUAL DO PROJETO
 
 **Versão:** 0.4.0-alpha
-**Última Sessão:** 2026-02-21 (Sessão 8)
+**Última Sessão:** 2026-03-01 (Sessão 9)
 **Branch:** main (CI ativo — GitHub Actions)
 **Testes:** 159 passando | 98.34% branch coverage
 **Repositório GitHub:** https://github.com/sataaa/yarner
@@ -189,11 +212,12 @@ Delimitadores: `GAME_STATUS_JSON_START` / `GAME_STATUS_JSON_END` (backticks não
 - ✅ Mapa de locais visitados (saídas coloridas, notas por local, terceira coluna expansível)
 - ✅ Save/load de progresso com slots nomeados
 - ✅ Markdown nas respostas da IA (com sanitização XSS)
+- ✅ Sistema de temas com 4 opções (persistido em localStorage)
 
 **Pendente:**
 - ⬜ Deploy em produção
 
 ---
 
-**Última atualização:** 2026-02-21 (Sessão 8)
-**Próxima revisão:** Sessão 9
+**Última atualização:** 2026-03-01 (Sessão 9)
+**Próxima revisão:** Sessão 10

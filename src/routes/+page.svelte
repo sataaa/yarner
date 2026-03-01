@@ -7,6 +7,7 @@
 	import LocationMap from '$lib/components/LocationMap.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import { locationMapExpanded } from '$lib/stores/aiChat';
+	import { currentTheme, themes } from '$lib/stores/themeStore';
 
 	let errorMessage = '';
 
@@ -21,12 +22,24 @@
 			console.error('Error loading game:', error);
 		}
 	}
+
+	function cycleTheme() {
+		const idx = themes.findIndex(t => t.id === $currentTheme);
+		const next = themes[(idx + 1) % themes.length];
+		currentTheme.setTheme(next.id);
+	}
+
+	$: activeTheme = themes.find(t => t.id === $currentTheme) ?? themes[0];
 </script>
 
 <main>
 	<header>
 		<span class="logo">🧶 Yarner</span>
 		<span class="tagline">Interactive Fiction + IA</span>
+		<div class="spacer"></div>
+		<button class="theme-btn" on:click={cycleTheme} title="Trocar tema: {activeTheme.label}">
+			{activeTheme.icon} {activeTheme.label}
+		</button>
 	</header>
 
 	{#if errorMessage}
@@ -68,9 +81,9 @@
 	}
 
 	header {
-		background: #242424;
+		background: var(--bg-header);
 		padding: 0.45rem 1.5rem;
-		border-bottom: 1px solid #3a3a3a;
+		border-bottom: 1px solid var(--border);
 		display: flex;
 		align-items: center;
 		gap: 1rem;
@@ -80,22 +93,44 @@
 	.logo {
 		font-size: 1.2rem;
 		font-weight: 700;
-		color: #ffa500;
+		color: var(--accent);
 		letter-spacing: -0.01em;
 	}
 
 	.tagline {
 		font-size: 0.75rem;
-		color: #555;
+		color: var(--text-faint);
+	}
+
+	.spacer {
+		flex: 1;
+	}
+
+	.theme-btn {
+		background: var(--btn-bg);
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
+		padding: 0.3rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.8rem;
+		transition: background 0.2s, border-color 0.2s;
+		white-space: nowrap;
+	}
+
+	.theme-btn:hover {
+		background: var(--btn-hover);
+		border-color: var(--accent);
+		color: var(--accent);
 	}
 
 	.error-banner {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		background: #331818;
-		color: #ff8888;
-		border-bottom: 1px solid #552222;
+		background: var(--error-bg);
+		color: var(--error-text);
+		border-bottom: 1px solid var(--error-border);
 		padding: 0.6rem 1.5rem;
 		font-size: 0.9rem;
 		flex-shrink: 0;
@@ -104,7 +139,7 @@
 	.error-banner button {
 		background: none;
 		border: none;
-		color: #ff8888;
+		color: var(--error-text);
 		font-size: 1.3rem;
 		cursor: pointer;
 		padding: 0 0.25rem;
@@ -116,7 +151,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: #1a1a1a;
+		background: var(--bg-base);
 		overflow-y: auto;
 	}
 
@@ -134,18 +169,18 @@
 	}
 
 	.game-panel {
-		background: #1e1e1e;
-		border-right: 1px solid #3a3a3a;
+		background: var(--bg-panel);
+		border-right: 1px solid var(--border);
 	}
 
 	.ai-panel {
-		background: #1a1a1a;
+		background: var(--bg-base);
 		overflow: hidden;
 	}
 
 	.map-panel {
-		background: #1e1e1e;
-		border-left: 1px solid #3a3a3a;
+		background: var(--bg-panel);
+		border-left: 1px solid var(--border);
 		flex: 0 0 300px;
 		overflow: hidden;
 	}
@@ -157,14 +192,14 @@
 
 		.game-panel {
 			border-right: none;
-			border-bottom: 1px solid #3a3a3a;
+			border-bottom: 1px solid var(--border);
 			min-height: 55vh;
 		}
 
 		.map-panel {
 			flex: 0 0 200px;
 			border-left: none;
-			border-top: 1px solid #3a3a3a;
+			border-top: 1px solid var(--border);
 		}
 	}
 </style>
