@@ -8,6 +8,8 @@
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { get } from 'svelte/store';
+	import { t, locale } from 'svelte-i18n';
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
 	import { aiChat, aiMemory, aiMessages } from '$lib/stores/aiChat';
@@ -144,7 +146,7 @@
 		try {
 			gameState.sendCommand(command);
 		} catch (error) {
-			gameState.addOutput(`\n[Erro: ${error}]\n`);
+			gameState.addOutput(`\n${get(t)('game.errorOutput', { values: { error: String(error) } })}\n`);
 		}
 
 		currentCommand = '';
@@ -214,6 +216,7 @@
 	}
 
 	async function openLoadPanel() {
+		if (showLoadPanel) { showLoadPanel = false; return; }
 		showSavePanel = false;
 		showRestartConfirm = false;
 		pendingLoadSlot = null;
@@ -223,6 +226,7 @@
 	}
 
 	function openSavePanel() {
+		if (showSavePanel) { showSavePanel = false; return; }
 		showLoadPanel = false;
 		showRestartConfirm = false;
 		saveSlotName = '';
@@ -242,9 +246,9 @@
 			lastSlotName = name;
 			showSavePanel = false;
 			saveSlotName = '';
-			showFeedback(`Salvo: "${name}"`);
+			showFeedback(get(t)('game.save.saved', { values: { name } }));
 		} catch (err) {
-			showFeedback(`Erro ao salvar: ${err}`);
+			showFeedback(get(t)('game.save.saveError', { values: { error: String(err) } }));
 		} finally {
 			isSaving = false;
 		}
@@ -259,9 +263,9 @@
 			await gameState.saveGame(lastSlotName, $aiMemory, $aiMessages);
 			showSavePanel = false;
 			saveSlotName = '';
-			showFeedback(`Salvo: "${lastSlotName}"`);
+			showFeedback(get(t)('game.save.saved', { values: { name: lastSlotName } }));
 		} catch (err) {
-			showFeedback(`Erro ao salvar: ${err}`);
+			showFeedback(get(t)('game.save.saveError', { values: { error: String(err) } }));
 		} finally {
 			isSaving = false;
 		}
@@ -289,9 +293,9 @@
 			commandHistory = [];
 			historyIndex = -1;
 			currentCommand = '';
-			showFeedback(`Carregado: "${slot.slotName}"`);
+			showFeedback(get(t)('game.load.loaded', { values: { name: slot.slotName } }));
 		} catch (err) {
-			showFeedback(`Erro ao carregar: ${err}`);
+			showFeedback(get(t)('game.load.loadError', { values: { error: String(err) } }));
 		} finally {
 			isLoadingSlot = false;
 		}
@@ -309,9 +313,9 @@
 		saveSlots = await gameState.getSaveSlotList();
 	}
 
-	function formatTimestamp(iso: string): string {
+	function formatTimestamp(iso: string, currentLocale: string | null | undefined): string {
 		try {
-			return new Date(iso).toLocaleString('pt-BR');
+			return new Date(iso).toLocaleString(currentLocale ?? 'pt-BR');
 		} catch {
 			return iso;
 		}
@@ -325,21 +329,21 @@
 
 <div class="game-panel">
 	<div class="game-header">
-		<h2 class="game-title">{displayName || gameName || 'Interactive Fiction'}</h2>
+		<h2 class="game-title">{displayName || gameName || $t('game.title')}</h2>
 		<div class="game-controls">
-			<button class="btn-icon" on:click={openSavePanel} title="Salvar jogo" disabled={isLoadingSlot}>
+			<button class="btn-icon" on:click={openSavePanel} title={$t('game.save.tooltip')} disabled={isLoadingSlot}>
 				💾
 			</button>
-			<button class="btn-icon" on:click={openLoadPanel} title="Carregar jogo" disabled={isLoadingSlot}>
+			<button class="btn-icon" on:click={openLoadPanel} title={$t('game.load.tooltip')} disabled={isLoadingSlot}>
 				📂
 			</button>
-			<button class="btn-icon" on:click={clearOutput} title="Limpar output">
+			<button class="btn-icon" on:click={clearOutput} title={$t('game.clearOutput')}>
 				🗑️
 			</button>
-			<button class="btn-icon" on:click={requestRestart} title="Reiniciar jogo">
+			<button class="btn-icon" on:click={requestRestart} title={$t('game.restart.tooltip')}>
 				🔄
 			</button>
-			<button class="btn-icon" on:click={requestCloseGame} title="Fechar jogo">
+			<button class="btn-icon" on:click={requestCloseGame} title={$t('game.close.tooltip')}>
 				❌
 			</button>
 		</div>
@@ -352,10 +356,10 @@
 	<!-- Confirmação inline de fechar jogo -->
 	{#if showCloseConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
-			<span>⚠️ Fechar o jogo e voltar à tela inicial?</span>
+			<span>⚠️ {$t('game.close.confirm')}</span>
 			<div class="confirm-actions">
-				<button class="btn-danger" on:click={doCloseGame}>Fechar</button>
-				<button class="btn-cancel-sm" on:click={() => showCloseConfirm = false}>Cancelar</button>
+				<button class="btn-danger" on:click={doCloseGame}>{$t('common.close')}</button>
+				<button class="btn-cancel-sm" on:click={() => showCloseConfirm = false}>{$t('common.cancel')}</button>
 			</div>
 		</div>
 	{/if}
@@ -363,10 +367,10 @@
 	<!-- Confirmação inline de restart -->
 	{#if showRestartConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
-			<span>⚠️ Reiniciar o jogo? O progresso atual será perdido.</span>
+			<span>⚠️ {$t('game.restart.confirm')}</span>
 			<div class="confirm-actions">
-				<button class="btn-danger" on:click={doRestart}>Reiniciar</button>
-				<button class="btn-cancel-sm" on:click={() => showRestartConfirm = false}>Cancelar</button>
+				<button class="btn-danger" on:click={doRestart}>{$t('game.restart.restart')}</button>
+				<button class="btn-cancel-sm" on:click={() => showRestartConfirm = false}>{$t('common.cancel')}</button>
 			</div>
 		</div>
 	{/if}
@@ -374,20 +378,20 @@
 	<!-- Painel de salvar -->
 	{#if showSavePanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
-			<div class="panel-title">💾 Salvar Jogo</div>
+			<div class="panel-title">💾 {$t('game.save.title')}</div>
 
 			{#if lastSlotName}
 				{#if showOverwriteConfirm}
 					<div class="overwrite-row confirm-strip-inline" transition:slide={{ duration: 120 }}>
-						<span>Sobrescrever <strong>"{lastSlotName}"</strong>?</span>
+						<span>{$t('game.save.overwriteConfirm', { values: { name: lastSlotName } })}</span>
 						<div class="confirm-actions">
-							<button class="btn-confirm" on:click={confirmOverwrite} disabled={isSaving}>Sobrescrever</button>
-							<button class="btn-cancel-sm" on:click={() => showOverwriteConfirm = false}>Cancelar</button>
+							<button class="btn-confirm" on:click={confirmOverwrite} disabled={isSaving}>{$t('game.save.overwrite')}</button>
+							<button class="btn-cancel-sm" on:click={() => showOverwriteConfirm = false}>{$t('common.cancel')}</button>
 						</div>
 					</div>
 				{:else}
 					<button class="overwrite-btn" on:click={() => showOverwriteConfirm = true} disabled={isSaving}>
-						💾 Salvar em "{lastSlotName}"
+						💾 {$t('game.save.overwriteSlot', { values: { name: lastSlotName } })}
 					</button>
 				{/if}
 			{/if}
@@ -396,19 +400,19 @@
 				<input
 					class="slot-input"
 					type="text"
-					placeholder="Nome do slot..."
+					placeholder={$t('game.save.slotPlaceholder')}
 					bind:value={saveSlotName}
 					bind:this={slotNameInput}
 					on:keydown={(e) => e.key === 'Enter' && confirmSave()}
 					maxlength="40"
 				/>
 				<button class="btn-confirm" on:click={confirmSave} disabled={!saveSlotName.trim() || isSaving}>
-					{isSaving ? '...' : 'Salvar'}
+					{isSaving ? $t('game.save.saving') : $t('game.save.save')}
 				</button>
 				<button class="btn-cancel" on:click={() => { showSavePanel = false; }}>✕</button>
 			</div>
 			{#if saveSlots[saveSlotName.trim()]}
-				<div class="overwrite-warn">⚠️ Este slot já existe e será sobrescrito.</div>
+				<div class="overwrite-warn">⚠️ {$t('game.save.slotExists')}</div>
 			{/if}
 		</div>
 	{/if}
@@ -417,20 +421,20 @@
 	{#if showLoadPanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-header-row">
-				<div class="panel-title">📂 Carregar Jogo</div>
+				<div class="panel-title">📂 {$t('game.load.title')}</div>
 				<button class="btn-cancel" on:click={() => { showLoadPanel = false; pendingLoadSlot = null; deletingSlotName = null; }}>✕</button>
 			</div>
 
 			{#if Object.keys(saveSlots).length === 0}
-				<div class="no-slots">Nenhum save encontrado para "{gameName}".</div>
+				<div class="no-slots">{$t('game.load.noSaves', { values: { name: gameName } })}</div>
 			{:else}
 				<!-- Confirmação de load inline -->
 				{#if pendingLoadSlot}
 					<div class="confirm-strip-inline" transition:slide={{ duration: 120 }}>
-						<span>Restaurar <strong>"{pendingLoadSlot.slotName}"</strong>? O progresso atual será perdido.</span>
+						<span>{$t('game.load.restoreConfirm', { values: { name: pendingLoadSlot.slotName } })}</span>
 						<div class="confirm-actions">
-							<button class="btn-confirm" on:click={doLoadSlot} disabled={isLoadingSlot}>Restaurar</button>
-							<button class="btn-cancel-sm" on:click={() => pendingLoadSlot = null}>Cancelar</button>
+							<button class="btn-confirm" on:click={doLoadSlot} disabled={isLoadingSlot}>{$t('game.load.restore')}</button>
+							<button class="btn-cancel-sm" on:click={() => pendingLoadSlot = null}>{$t('common.cancel')}</button>
 						</div>
 					</div>
 				{/if}
@@ -440,15 +444,15 @@
 						<div class="slot-item" class:confirming={deletingSlotName === slot.slotName}>
 							{#if deletingSlotName === slot.slotName}
 								<!-- Confirmação de exclusão inline no próprio item -->
-								<span class="delete-confirm-text">Deletar "{slot.slotName}"?</span>
+								<span class="delete-confirm-text">{$t('game.delete.deleteConfirm', { values: { name: slot.slotName } })}</span>
 								<div class="slot-actions">
-									<button class="btn-danger-sm" on:click={() => doDeleteSlot(slot.slotName)}>Deletar</button>
-									<button class="btn-cancel-sm" on:click={() => deletingSlotName = null}>Cancelar</button>
+									<button class="btn-danger-sm" on:click={() => doDeleteSlot(slot.slotName)}>{$t('game.delete.delete')}</button>
+									<button class="btn-cancel-sm" on:click={() => deletingSlotName = null}>{$t('common.cancel')}</button>
 								</div>
 							{:else}
 								<div class="slot-info">
 									<span class="slot-name">{slot.slotName}</span>
-									<span class="slot-date">{formatTimestamp(slot.timestamp)}</span>
+									<span class="slot-date">{formatTimestamp(slot.timestamp, $locale)}</span>
 								</div>
 								<div class="slot-actions">
 									<button
@@ -457,9 +461,9 @@
 										on:click={() => requestLoadSlot(slot)}
 										disabled={isLoadingSlot}
 									>
-										Carregar
+										{$t('game.load.load')}
 									</button>
-									<button class="btn-delete" on:click={() => requestDeleteSlot(slot.slotName)} title="Deletar slot">
+									<button class="btn-delete" on:click={() => requestDeleteSlot(slot.slotName)} title={$t('game.load.deleteSlotTooltip')}>
 										🗑
 									</button>
 								</div>
@@ -474,8 +478,8 @@
 	<div class="output-container" bind:this={outputContainer}>
 		{#if gameOutput.length === 0}
 			<div class="welcome-message">
-				<p>Jogo carregado! Aguardando output...</p>
-				<p class="hint">O jogo começará em instantes.</p>
+				<p>{$t('game.welcome')}</p>
+				<p class="hint">{$t('game.welcomeHint')}</p>
 			</div>
 		{:else}
 			{#each gameOutput as output, i}
@@ -493,7 +497,7 @@
 			bind:value={currentCommand}
 			bind:this={commandInput}
 			on:keydown={handleCommand}
-			placeholder="Digite um comando... (↑↓ para histórico)"
+			placeholder={$t('game.commandPlaceholder')}
 			class="command-input"
 		/>
 	</div>

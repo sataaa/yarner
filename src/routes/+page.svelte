@@ -21,30 +21,32 @@
 	} from '$lib/stores/aiPersistence';
 	import { currentTheme, themes } from '$lib/stores/themeStore';
 	import { getValidatedGameName } from '$lib/data/validatedGames';
+	import { t, locale } from 'svelte-i18n';
+	import { cycleLocale, getLocaleLabel, getLocaleIcon } from '$lib/i18n';
 
 	let errorMessage = '';
-	let infoMessage = '';
 	let gameLibraryRef: GameLibrary;
+	let fileUploaderRef: FileUploader;
 	let displayName = '';
 	let lastSlotName = '';
 
 	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
 		errorMessage = '';
-		infoMessage = '';
 
 		try {
 			const sha256 = await computeSHA256(data);
 			const existing = await getGameFromLibrary(sha256);
 
 			if (existing) {
-				// Jogo já está na biblioteca — destaca na lista
-				infoMessage = 'Este jogo já está na sua biblioteca';
+				// Jogo já está na biblioteca — destaca na lista com mensagem inline
+				fileUploaderRef?.reset();
 				gameLibraryRef?.highlightGame(sha256);
 				return;
 			}
 
 			// Novo jogo — adiciona à biblioteca (sem iniciar)
+			fileUploaderRef?.reset();
 			const gameName = filename.replace(/\.[^.]+$/, '');
 			const now = new Date().toISOString();
 			const entry: GameLibraryEntry = {
@@ -59,7 +61,7 @@
 			await addGameToLibrary(entry);
 			await gameLibraryRef?.refresh();
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
+			errorMessage = error instanceof Error ? error.message : $t('game.loadFailed');
 			console.error('Error loading game:', error);
 		}
 	}
@@ -67,7 +69,6 @@
 	async function handleLoadFromLibrary(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
 		errorMessage = '';
-		infoMessage = '';
 
 		try {
 			// Resolve displayName ANTES de carregar — evita flash do gameName no título
@@ -84,7 +85,7 @@
 			await gameState.loadGame(filename, data);
 			await updateLastPlayed(sha256);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Falha ao carregar o jogo';
+			errorMessage = error instanceof Error ? error.message : $t('game.loadFailed');
 			console.error('Error loading game from library:', error);
 		}
 	}
@@ -92,7 +93,6 @@
 	async function handleLoadFromSave(event: CustomEvent<{ slot: SaveSlot }>) {
 		const { slot } = event.detail;
 		errorMessage = '';
-		infoMessage = '';
 
 		try {
 			// Resolve displayName pelo SHA original na biblioteca (não do slot.gameData,
@@ -111,7 +111,7 @@
 			await gameState.loadFromSaveSlot(slot);
 			if (libraryEntry) await updateLastPlayed(libraryEntry.sha256);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Falha ao restaurar o save';
+			errorMessage = error instanceof Error ? error.message : $t('game.restoreFailed');
 			console.error('Error loading save from library:', error);
 		}
 	}
@@ -128,31 +128,27 @@
 <main>
 	<header>
 		<span class="logo">🧶 Yarner</span>
-		<span class="tagline">Interactive Fiction + IA</span>
+		<span class="tagline">{$t('header.tagline')}</span>
 		<div class="spacer"></div>
-		<button class="theme-btn" on:click={cycleTheme} title="Trocar tema: {activeTheme.label}">
+		<button class="header-btn" on:click={cycleLocale} title={$t('header.changeLocale', { values: { locale: getLocaleLabel($locale) } })}>
+			{getLocaleIcon($locale)} {getLocaleLabel($locale)}
+		</button>
+		<button class="header-btn" on:click={cycleTheme} title={$t('header.changeTheme', { values: { theme: activeTheme.label } })}>
 			{activeTheme.icon} {activeTheme.label}
 		</button>
 	</header>
 
 	{#if errorMessage}
 		<div class="error-banner">
-			<strong>Erro:</strong> {errorMessage}
+			<strong>{$t('common.error')}:</strong> {errorMessage}
 			<button on:click={() => errorMessage = ''}>×</button>
-		</div>
-	{/if}
-
-	{#if infoMessage}
-		<div class="info-banner">
-			{infoMessage}
-			<button on:click={() => infoMessage = ''}>×</button>
 		</div>
 	{/if}
 
 	{#if !$isGameLoaded}
 		<div class="upload-screen">
 			<div class="upload-wrapper">
-				<FileUploader on:gameLoaded={handleGameLoaded} />
+				<FileUploader bind:this={fileUploaderRef} on:gameLoaded={handleGameLoaded} />
 				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
 			</div>
 		</div>
@@ -203,7 +199,7 @@
 		flex: 1;
 	}
 
-	.theme-btn {
+	.header-btn {
 		background: var(--btn-bg);
 		border: 1px solid var(--border);
 		color: var(--text-secondary);
@@ -215,7 +211,7 @@
 		white-space: nowrap;
 	}
 
-	.theme-btn:hover {
+	.header-btn:hover {
 		background: var(--btn-hover);
 		border-color: var(--accent);
 		color: var(--accent);
@@ -237,28 +233,6 @@
 		background: none;
 		border: none;
 		color: var(--error-text);
-		font-size: 1.3rem;
-		cursor: pointer;
-		padding: 0 0.25rem;
-		line-height: 1;
-	}
-
-	.info-banner {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		background: var(--bg-elevated);
-		color: var(--accent);
-		border-bottom: 1px solid var(--accent);
-		padding: 0.6rem 1.5rem;
-		font-size: 0.9rem;
-		flex-shrink: 0;
-	}
-
-	.info-banner button {
-		background: none;
-		border: none;
-		color: var(--accent);
 		font-size: 1.3rem;
 		cursor: pointer;
 		padding: 0 0.25rem;

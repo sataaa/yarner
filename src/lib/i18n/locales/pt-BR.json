@@ -1,0 +1,143 @@
+{
+	"common": {
+		"cancel": "Cancelar",
+		"close": "Fechar",
+		"error": "Erro",
+		"loading": "Carregando..."
+	},
+	"header": {
+		"tagline": "Interactive Fiction + IA",
+		"changeTheme": "Trocar tema: {theme}",
+		"changeLocale": "Idioma: {locale}"
+	},
+	"game": {
+		"title": "Interactive Fiction",
+		"save": {
+			"title": "Salvar Jogo",
+			"tooltip": "Salvar jogo",
+			"slotPlaceholder": "Nome do slot...",
+			"save": "Salvar",
+			"saving": "...",
+			"saved": "Salvo: \"{name}\"",
+			"saveError": "Erro ao salvar: {error}",
+			"overwrite": "Sobrescrever",
+			"overwriteSlot": "Salvar em \"{name}\"",
+			"overwriteConfirm": "Sobrescrever \"{name}\"?",
+			"slotExists": "Este slot já existe e será sobrescrito."
+		},
+		"load": {
+			"title": "Carregar Jogo",
+			"tooltip": "Carregar jogo",
+			"load": "Carregar",
+			"loaded": "Carregado: \"{name}\"",
+			"loadError": "Erro ao carregar: {error}",
+			"noSaves": "Nenhum save encontrado para \"{name}\".",
+			"restore": "Restaurar",
+			"restoreConfirm": "Restaurar \"{name}\"? O progresso atual será perdido.",
+			"restored": "[Jogo restaurado: \"{name}\"]",
+			"deleteSlotTooltip": "Deletar slot"
+		},
+		"delete": {
+			"delete": "Deletar",
+			"deleteConfirm": "Deletar \"{name}\"?"
+		},
+		"close": {
+			"tooltip": "Fechar jogo",
+			"confirm": "Fechar o jogo e voltar à tela inicial?"
+		},
+		"restart": {
+			"tooltip": "Reiniciar jogo",
+			"confirm": "Reiniciar o jogo? O progresso atual será perdido.",
+			"restart": "Reiniciar"
+		},
+		"clearOutput": "Limpar output",
+		"commandPlaceholder": "Digite um comando... (↑↓ para histórico)",
+		"welcome": "Jogo carregado! Aguardando output...",
+		"welcomeHint": "O jogo começará em instantes.",
+		"loadFailed": "Falha ao carregar o jogo",
+		"restoreFailed": "Falha ao restaurar o save",
+		"errorOutput": "[Erro: {error}]"
+	},
+	"ai": {
+		"heading": "Assistente IA",
+		"remote": "remoto",
+		"local": "local",
+		"notesTooltip": "Anotações da IA",
+		"clearChatTooltip": "Limpar chat (mantém anotações)",
+		"settingsTooltip": "Configurações de IA",
+		"sendTooltip": "Enviar mensagem",
+		"provider": "Provider",
+		"apiKey": "API Key",
+		"apiKeyPlaceholder": "Cole sua API key aqui",
+		"model": "Modelo",
+		"modelPlaceholder": "Nome do modelo",
+		"apiUrl": "URL da API",
+		"debug": "Debug",
+		"loadingModels": "carregando...",
+		"updatingNotes": "Atualizando anotações...",
+		"emptyNotes": "Nenhuma anotação ainda. A IA criará notas conforme vocês conversam.",
+		"emptyChat": "Jogue um pouco e depois me pergunte qualquer coisa sobre o jogo!",
+		"askPlaceholder": "Pergunte algo sobre o jogo...",
+		"loadGameFirst": "Carregue um jogo primeiro...",
+		"geminiKeyHint": "Pegue sua key grátis em",
+		"customProvider": "Personalizado",
+		"debugMemory": "AI Memory (debug)",
+		"debugStream": "Raw stream",
+		"hints": {
+			"whereAmI": "onde estou?",
+			"whatToDo": "o que devo fazer?",
+			"myItems": "que itens tenho?",
+			"giveHint": "dê uma dica"
+		}
+	},
+	"upload": {
+		"heading": "Carregar Jogo Z-Machine",
+		"dragPrompt": "Arraste um arquivo ou clique para selecionar",
+		"formats": ".z3 · .z4 · .z5 · .z8 · .zblorb",
+		"chooseFile": "Escolher Arquivo",
+		"chooseOtherFile": "Escolher Outro Arquivo",
+		"loadingGame": "Carregando jogo...",
+		"invalidFile": "Arquivo inválido. Selecione um arquivo Z-Machine ({extensions})",
+		"notZMachine": "Este arquivo não parece ser um Z-Machine válido",
+		"loadFailed": "Falha ao carregar o arquivo",
+		"uploadAreaLabel": "Área de upload — arraste um arquivo ou clique para selecionar",
+		"needAGame": "Precisa de um jogo?",
+		"downloadGames": "Baixe jogos de ficção interativa gratuitamente em:",
+		"ifdb": "Interactive Fiction Database",
+		"ifArchive": "Jogos clássicos",
+		"searchHint": "Procure por arquivos .z5, .z8 ou .zblorb"
+	},
+	"library": {
+		"heading": "Jogos Recentes",
+		"removeConfirm": "Remover \"{name}\"?",
+		"remove": "Remover",
+		"validatedTooltip": "Verificado como jogável no Yarner",
+		"loadTooltip": "Carregar {name}",
+		"removeTooltip": "Remover da biblioteca",
+		"restoreSaveTooltip": "Restaurar save: {name}",
+		"duplicate": "Já na biblioteca"
+	},
+	"errors": {
+		"noGameLoaded": "Nenhum jogo carregado",
+		"snapshotFailed": "Falha ao criar snapshot do jogo",
+		"connectionError": "Não foi possível conectar ao servidor de IA. Verifique se o servidor está rodando.",
+		"invalidApiKey": "Chave de API inválida. Verifique sua chave e tente novamente.",
+		"rateLimit": "Limite de requisições atingido. Aguarde um momento e tente novamente.",
+		"unknownError": "Erro desconhecido ao se comunicar com a IA.",
+		"apiError": "Erro: {message}"
+	},
+	"systemPrompt": {
+		"role": "Voce e um assistente para jogos de aventura em texto (interactive fiction). O jogador esta jogando \"{gameName}\".",
+		"duties": "Seu papel:\n- Ajudar o jogador quando ele pedir dicas ou sugestoes\n- Analisar a saida do jogo e manter anotacoes sobre o progresso\n- Responder em portugues do Brasil\n- Ser conciso e util, sem dar spoilers desnecessarios\n- Sugerir comandos validos do jogo quando apropriado (look, examine, go north, take, etc.)\n- Se o jogador perguntar algo generico, use suas anotacoes como contexto",
+		"contextHeader": "CONTEXTO DO JOGO - Novidades desde a ultima interacao:",
+		"noNews": "(nenhuma novidade no jogo ainda)",
+		"notesHeader": "SUAS ANOTACOES (caderno de notas que voce mantem sobre o jogo):",
+		"empty": "(vazio)",
+		"notesInstruction": "INSTRUCAO SOBRE ANOTACOES: Ao final da resposta, voce PODE incluir um bloco de atualizacao de anotacoes. Se nao houver nada para atualizar, NAO inclua o bloco. Use o formato:",
+		"rules": "Regras:\n- ADD: adiciona uma nova nota ao final da lista (maximo {max} notas)\n- REMOVE N: remove a nota numero N (os indices se reajustam apos cada operacao)\n- UPDATE N texto: substitui o conteudo da nota numero N\n- As operacoes sao processadas sequencialmente (REMOVE altera os indices)\n- NAO mencione o bloco de anotacoes na sua resposta visivel\n- Use anotacoes para guardar: localizacao atual, inventario, objetivos, locais visitados, coisas importantes"
+	},
+	"gemmaWorkaround": {
+		"instructions": "[Instruções]",
+		"acknowledged": "Entendido, vou seguir essas instruções."
+	}
+}

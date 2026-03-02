@@ -11,6 +11,8 @@
  */
 
 import type { AIMemory } from '../stores/aiPersistence';
+import { get } from 'svelte/store';
+import { t } from 'svelte-i18n';
 
 /** Model option for provider dropdown */
 export interface ModelOption {
@@ -59,7 +61,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 	},
 	{
 		id: 'custom',
-		name: 'Personalizado',
+		name: 'Custom',
 		apiUrl: '',
 		defaultModel: '',
 		requiresKey: false
@@ -114,7 +116,7 @@ export async function sendToAIStreaming(
 	const supportsSystem = !model.toLowerCase().includes('gemma');
 	const messages = supportsSystem
 		? [{ role: 'system', content: systemPrompt }, ...conversationHistory]
-		: [{ role: 'user', content: `[Instruções]\n${systemPrompt}` }, { role: 'assistant', content: 'Entendido, vou seguir essas instruções.' }, ...conversationHistory];
+		: [{ role: 'user', content: `${get(t)('gemmaWorkaround.instructions')}\n${systemPrompt}` }, { role: 'assistant', content: get(t)('gemmaWorkaround.acknowledged') }, ...conversationHistory];
 
 	const requestBody = {
 		model,
@@ -221,27 +223,22 @@ export function buildSystemPrompt(
 	memory: AIMemory,
 	gameHistoryDiff: string
 ): string {
+	const translate = get(t);
 	const memorySection = memory.length > 0
 		? memory.map((note, i) => `${i + 1}. ${note}`).join('\n')
-		: '(vazio)';
+		: translate('systemPrompt.empty');
 
-	return `Voce e um assistente para jogos de aventura em texto (interactive fiction). O jogador esta jogando "${gameName}".
+	return `${translate('systemPrompt.role', { values: { gameName } })}
 
-Seu papel:
-- Ajudar o jogador quando ele pedir dicas ou sugestoes
-- Analisar a saida do jogo e manter anotacoes sobre o progresso
-- Responder em portugues do Brasil
-- Ser conciso e util, sem dar spoilers desnecessarios
-- Sugerir comandos validos do jogo quando apropriado (look, examine, go north, take, etc.)
-- Se o jogador perguntar algo generico, use suas anotacoes como contexto
+${translate('systemPrompt.duties')}
 
-CONTEXTO DO JOGO - Novidades desde a ultima interacao:
-${gameHistoryDiff || '(nenhuma novidade no jogo ainda)'}
+${translate('systemPrompt.contextHeader')}
+${gameHistoryDiff || translate('systemPrompt.noNews')}
 
-SUAS ANOTACOES (caderno de notas que voce mantem sobre o jogo):
+${translate('systemPrompt.notesHeader')}
 ${memorySection}
 
-INSTRUCAO SOBRE ANOTACOES: Ao final da resposta, voce PODE incluir um bloco de atualizacao de anotacoes. Se nao houver nada para atualizar, NAO inclua o bloco. Use o formato:
+${translate('systemPrompt.notesInstruction')}
 
 MEMORY_UPDATE_START
 ADD texto da nova nota
@@ -249,13 +246,7 @@ REMOVE 3
 UPDATE 1 texto atualizado da nota
 MEMORY_UPDATE_END
 
-Regras:
-- ADD: adiciona uma nova nota ao final da lista (maximo ${MAX_MEMORY_NOTES} notas)
-- REMOVE N: remove a nota numero N (os indices se reajustam apos cada operacao)
-- UPDATE N texto: substitui o conteudo da nota numero N
-- As operacoes sao processadas sequencialmente (REMOVE altera os indices)
-- NAO mencione o bloco de anotacoes na sua resposta visivel
-- Use anotacoes para guardar: localizacao atual, inventario, objetivos, locais visitados, coisas importantes`;
+${translate('systemPrompt.rules', { values: { max: String(MAX_MEMORY_NOTES) } })}`;
 }
 
 /**
@@ -368,17 +359,18 @@ export async function fetchAvailableModels(
  * Translate API errors to user-friendly Portuguese messages.
  */
 export function getErrorMessage(error: unknown): string {
+	const translate = get(t);
 	if (error instanceof TypeError && (error as Error).message.includes('fetch')) {
-		return 'Nao foi possivel conectar ao servidor de IA. Verifique se o servidor esta rodando.';
+		return translate('errors.connectionError');
 	}
 	if (error instanceof Error) {
 		if (error.message.includes('401')) {
-			return 'Chave de API invalida. Verifique sua chave e tente novamente.';
+			return translate('errors.invalidApiKey');
 		}
 		if (error.message.includes('429')) {
-			return 'Limite de requisicoes atingido. Aguarde um momento e tente novamente.';
+			return translate('errors.rateLimit');
 		}
-		return `Erro: ${error.message}`;
+		return translate('errors.apiError', { values: { message: error.message } });
 	}
-	return 'Erro desconhecido ao se comunicar com a IA.';
+	return translate('errors.unknownError');
 }

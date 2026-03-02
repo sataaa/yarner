@@ -28,6 +28,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
     "idb": "^8.0.0",
-    "ifvms": "^1.1.6"
+    "ifvms": "^1.1.6",
+    "svelte-i18n": "^4.0.1"
   }
 }

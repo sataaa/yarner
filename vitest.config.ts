@@ -14,6 +14,7 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['src/**/*.test.ts'],
+		setupFiles: ['src/lib/i18n/test-setup.ts'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json-summary'],

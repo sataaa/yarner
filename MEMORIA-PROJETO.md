@@ -49,7 +49,8 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 - Lookup: `getValidatedGameName(sha256)`, `isValidatedGame(sha256)`
 - **ifvms.js muta o ArrayBuffer in-place** (memória dinâmica do Z-Machine) — SHA de `slot.gameData` difere do original. Para resolver displayName em saves, buscar o SHA original na biblioteca pelo `gameName`.
 - Upload unificado: sempre adiciona à biblioteca primeiro, jogador inicia de lá
-- Upload duplicado: banner "já está na biblioteca" + highlight com flash CSS
+- Upload duplicado: highlight de fundo + mensagem inline "Já na biblioteca" no card (sem banner no topo)
+- FileUploader reseta ao estado inicial após upload (duplicata ou novo jogo)
 
 ---
 
@@ -68,14 +69,15 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 | 9 | 2026-03-01 | Temas, Providers, AI Memory Notes | [docs/sessao-09.md](docs/sessao-09.md) |
 | 10 | 2026-03-01 | Fechar Jogo, Biblioteca, Quick-Load | [docs/sessao-10.md](docs/sessao-10.md) |
 | 11 | 2026-03-01 | Jogos Validados, Upload Unificado, Sobrescrita de Saves | [docs/sessao-11.md](docs/sessao-11.md) |
+| 12 | 2026-03-01 | i18n da UI (PT-BR + EN) | [docs/sessao-12.md](docs/sessao-12.md) |
 
 ---
 
 ## 📊 STATUS ATUAL
 
-**Versão:** 0.7.0-alpha
-**Última Sessão:** 11 (2026-03-01)
-**Testes:** 200 passando | 99%+ coverage
+**Versão:** 0.8.0-alpha
+**Última Sessão:** 12 (2026-03-01)
+**Testes:** 217 passando | 99%+ coverage
 **CI:** GitHub Actions (bloqueia merge em falha)
 
 ### ✅ Completado
@@ -94,11 +96,24 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 - Upload unificado (adiciona à biblioteca, detecção de duplicatas com highlight)
 - Sobrescrita de saves (botão rápido no painel de save)
 - Layout side-by-side (uploader + biblioteca na tela inicial)
+- i18n da UI com svelte-i18n (PT-BR + EN, seletor no header, detecção automática)
+- Upload duplicado: highlight de fundo + mensagem inline no card
+- Toggle nos painéis de salvar/carregar (clique abre/fecha)
+
+### i18n — Decisões (pré-implementação)
+- **Lib:** `svelte-i18n` (runtime-based, JSON locale files, familiar `$t('key')` API)
+- **Idiomas iniciais:** PT-BR (padrão) + EN
+- **Extensibilidade:** arquivos JSON por idioma, fáceis de contribuir
+- **Detecção automática:** `navigator.language`, fallback PT-BR
+- **Persistência:** localStorage (igual ao tema)
+- **Seletor:** header, ao lado do botão de tema
+- **Escopo épico A (sessão 12):** i18n da UI — extrair strings, sistema de tradução, seletor
+- **Escopo épico B (sessão 13+):** documentação em inglês (MANDAMENTOS, MEMORIA-PROJETO, comentários no código, README). docs/sessao-*.md mantidas em PT-BR (registro histórico)
 
 ### 📋 Backlog (não refinado)
-1. **i18n** — detectar língua do sistema, permitir trocar (inicialmente pt-BR e inglês)
+1. **Documentação em inglês — Épico B** — traduzir docs internas, comentários, MANDAMENTOS, MEMORIA-PROJETO
 2. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
 
 ---
 
-**Última atualização:** 2026-03-01 (Sessão 11)
+**Última atualização:** 2026-03-01 (Sessão 12)
