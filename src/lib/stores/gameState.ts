@@ -6,6 +6,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
+import { t } from 'svelte-i18n';
 import { createGameEngine, type GameEngine } from '$lib/zmachine';
 import {
 	getSaveSlots,
@@ -188,12 +189,12 @@ export async function saveGame(
 	const state = get(gameStateStore);
 
 	if (!state.isLoaded || !state.engine || !state.gameData) {
-		throw new Error('Nenhum jogo carregado');
+		throw new Error(get(t)('errors.noGameLoaded'));
 	}
 
 	const snapshot = state.engine.saveSnapshot();
 	if (!snapshot) {
-		throw new Error('Falha ao criar snapshot do jogo');
+		throw new Error(get(t)('errors.snapshotFailed'));
 	}
 
 	const slot: SaveSlot = {
@@ -239,7 +240,7 @@ export async function loadFromSaveSlot(slot: SaveSlot): Promise<void> {
 		...s,
 		isLoaded: false,
 		gameName,
-		gameHistory: [...slot.gameHistory, `\n[Jogo restaurado: "${slot.slotName}"]\n`],
+		gameHistory: [...slot.gameHistory, `\n${get(t)('game.load.restored', { values: { name: slot.slotName } })}\n`],
 		commandHistory: [],
 		engine: null,
 		gameData: slot.gameData

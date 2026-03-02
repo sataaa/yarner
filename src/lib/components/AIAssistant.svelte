@@ -22,6 +22,7 @@
 	import { PROVIDER_PRESETS, fetchAvailableModels } from '$lib/api/claude';
 	import type { ModelOption } from '$lib/api/claude';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
+	import { t } from 'svelte-i18n';
 
 	let messageInput = '';
 	let messagesContainer: HTMLDivElement;
@@ -214,20 +215,20 @@
 <div class="ai-assistant">
 	<!-- Cabeçalho do chat -->
 	<div class="chat-header">
-		<h2>Assistente IA <span class="model-badge" class:remote={currentPreset?.requiresKey}>{$aiModel}{#if currentPreset?.requiresKey} · remoto{:else} · local{/if}</span></h2>
+		<h2>{$t('ai.heading')} <span class="model-badge" class:remote={currentPreset?.requiresKey}>{$aiModel}{#if currentPreset?.requiresKey} · {$t('ai.remote')}{:else} · {$t('ai.local')}{/if}</span></h2>
 		<div class="header-controls">
 			<button
 				class="btn-icon"
 				class:active={showMemoryPanel}
 				on:click={() => (showMemoryPanel = !showMemoryPanel)}
-				title="Anotações da IA"
+				title={$t('ai.notesTooltip')}
 			>
 				📝
 			</button>
 			<button
 				class="btn-icon"
 				on:click={() => aiChat.clearChatMessages()}
-				title="Limpar chat (mantém anotações)"
+				title={$t('ai.clearChatTooltip')}
 				disabled={$aiMessages.length === 0}
 			>
 				🗑️
@@ -236,7 +237,7 @@
 				class="btn-icon"
 				class:active={showSettings}
 				on:click={openSettings}
-				title="Configurações de IA"
+				title={$t('ai.settingsTooltip')}
 			>
 				⚙️
 			</button>
@@ -247,36 +248,36 @@
 	{#if showSettings}
 		<div class="settings-panel" transition:slide={{ duration: 200 }}>
 			<div class="settings-field">
-				<label for="provider-select">Provider</label>
+				<label for="provider-select">{$t('ai.provider')}</label>
 				<select id="provider-select" value={$aiProviderId} on:change={handleProviderChange}>
 					{#each PROVIDER_PRESETS as preset}
-						<option value={preset.id}>{preset.name}</option>
+						<option value={preset.id}>{preset.id === 'custom' ? $t('ai.customProvider') : preset.name}</option>
 					{/each}
 				</select>
 			</div>
 
 			{#if providerRequiresKey}
 				<div class="settings-field">
-					<label for="api-key-input">API Key</label>
+					<label for="api-key-input">{$t('ai.apiKey')}</label>
 					<div class="input-row">
 						<input
 							id="api-key-input"
 							type="password"
 							bind:value={settingsApiKey}
 							on:blur={handleApiKeySave}
-							placeholder="Cole sua API key aqui"
+							placeholder={$t('ai.apiKeyPlaceholder')}
 						/>
 					</div>
 					{#if $aiProviderId === 'gemini'}
 						<p class="settings-hint">
-							Pegue sua key grátis em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+							{$t('ai.geminiKeyHint')} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
 						</p>
 					{/if}
 				</div>
 			{/if}
 
 			<div class="settings-field">
-				<label for="model-input">Modelo {#if loadingModels}<span class="loading-hint">carregando...</span>{/if}</label>
+				<label for="model-input">{$t('ai.model')} {#if loadingModels}<span class="loading-hint">{$t('ai.loadingModels')}</span>{/if}</label>
 				{#if availableModels.length > 0}
 					<select
 						id="model-input"
@@ -293,14 +294,14 @@
 						type="text"
 						bind:value={settingsModel}
 						on:blur={handleModelSave}
-						placeholder="Nome do modelo"
+						placeholder={$t('ai.modelPlaceholder')}
 					/>
 				{/if}
 			</div>
 
 			{#if $aiProviderId === 'custom'}
 				<div class="settings-field">
-					<label for="url-input">URL da API</label>
+					<label for="url-input">{$t('ai.apiUrl')}</label>
 					<input
 						id="url-input"
 						type="text"
@@ -312,7 +313,7 @@
 			{/if}
 
 			<div class="settings-field settings-toggle">
-				<label for="debug-toggle">Debug</label>
+				<label for="debug-toggle">{$t('ai.debug')}</label>
 				<label class="toggle-switch">
 					<input id="debug-toggle" type="checkbox" bind:checked={debugMode} />
 					<span class="toggle-label">{debugMode ? 'ON' : 'OFF'}</span>
@@ -325,7 +326,7 @@
 	{#if showMemoryPanel}
 		<div class="memory-panel" transition:slide={{ duration: 200 }}>
 			{#if $aiMemory.length === 0}
-				<p class="memory-empty">Nenhuma anotação ainda. A IA criará notas conforme vocês conversam.</p>
+				<p class="memory-empty">{$t('ai.emptyNotes')}</p>
 			{:else}
 				<ol class="memory-list">
 					{#each $aiMemory as note}
@@ -341,16 +342,16 @@
 		{#if $aiMessages.length === 0 && !$aiIsStreaming}
 			<div class="empty-chat">
 				<div class="empty-icon">🤖</div>
-				<p>Jogue um pouco e depois me pergunte qualquer coisa sobre o jogo!</p>
+				<p>{$t('ai.emptyChat')}</p>
 				<div class="empty-hints">
-					{#each ['onde estou?', 'o que devo fazer?', 'que itens tenho?', 'dê uma dica'] as hint}
+					{#each ['whereAmI', 'whatToDo', 'myItems', 'giveHint'] as hintKey}
 						<span
 							role="button"
 							tabindex="0"
-							on:click={async () => { messageInput = hint; await handleSendMessage(); }}
-							on:keydown={async (e) => { if (e.key === 'Enter') { messageInput = hint; await handleSendMessage(); } }}
+							on:click={async () => { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); }}
+							on:keydown={async (e) => { if (e.key === 'Enter') { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); } }}
 						>
-							"{hint}"
+							"{$t(`ai.hints.${hintKey}`)}"
 						</span>
 					{/each}
 				</div>
@@ -380,7 +381,7 @@
 						<span class="status-dot"></span>
 						<span class="status-dot"></span>
 						<span class="status-dot"></span>
-						Atualizando anotações...
+						{$t('ai.updatingNotes')}
 					</div>
 				{/if}
 			</div>
@@ -389,7 +390,7 @@
 		<!-- Debug: AI memory -->
 		{#if debugMode && !$aiIsStreaming && $aiMessages.length > 0}
 			<div class="debug-block">
-				<div class="debug-header">🐛 AI Memory (debug)</div>
+				<div class="debug-header">🐛 {$t('ai.debugMemory')}</div>
 				<pre class="debug-json">{JSON.stringify($aiMemory, null, 2)}</pre>
 			</div>
 		{/if}
@@ -397,7 +398,7 @@
 		<!-- Debug: raw streaming -->
 		{#if debugMode && $aiIsStreaming && $aiStreamingContent}
 			<div class="debug-block">
-				<div class="debug-header">🐛 Raw stream</div>
+				<div class="debug-header">🐛 {$t('ai.debugStream')}</div>
 				<pre class="debug-json">{$aiStreamingContent}</pre>
 			</div>
 		{/if}
@@ -423,7 +424,7 @@
 			type="text"
 			bind:value={messageInput}
 			on:keydown={handleMessageKeydown}
-			placeholder={$isGameLoaded ? 'Pergunte algo sobre o jogo...' : 'Carregue um jogo primeiro...'}
+			placeholder={$isGameLoaded ? $t('ai.askPlaceholder') : $t('ai.loadGameFirst')}
 			disabled={$aiIsLoading || !$isGameLoaded}
 			class="message-input"
 		/>
@@ -431,7 +432,7 @@
 			class="btn-send"
 			on:click={handleSendMessage}
 			disabled={$aiIsLoading || !messageInput.trim() || !$isGameLoaded}
-			title="Enviar mensagem"
+			title={$t('ai.sendTooltip')}
 		>
 			↑
 		</button>

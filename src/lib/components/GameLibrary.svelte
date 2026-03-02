@@ -10,6 +10,7 @@
 		type SaveSlot
 	} from '$lib/stores/aiPersistence';
 	import { getValidatedGameName, isValidatedGame } from '$lib/data/validatedGames';
+	import { t, locale } from 'svelte-i18n';
 
 	const dispatch = createEventDispatcher<{
 		loadFromLibrary: { filename: string; data: ArrayBuffer };
@@ -90,7 +91,7 @@
 
 	function formatDate(iso: string): string {
 		try {
-			return new Date(iso).toLocaleDateString('pt-BR');
+			return new Date(iso).toLocaleDateString($locale ?? 'pt-BR');
 		} catch {
 			return iso;
 		}
@@ -98,7 +99,7 @@
 
 	function formatDateTime(iso: string): string {
 		try {
-			return new Date(iso).toLocaleString('pt-BR', {
+			return new Date(iso).toLocaleString($locale ?? 'pt-BR', {
 				day: '2-digit', month: '2-digit',
 				hour: '2-digit', minute: '2-digit'
 			});
@@ -110,29 +111,33 @@
 
 {#if games.length > 0}
 	<div class="game-library">
-		<h4>Jogos Recentes</h4>
+		<h4>{$t('library.heading')}</h4>
 		<div class="library-list">
 			{#each games as game (game.sha256)}
 				<div class="library-item-wrapper" class:highlighted={highlightedSha === game.sha256} data-sha={game.sha256} transition:slide={{ duration: 150 }}>
 					<div class="library-item" class:confirming={deletingSha === game.sha256}>
 						{#if deletingSha === game.sha256}
-							<span class="delete-confirm-text">Remover "{displayName(game)}"?</span>
+							<span class="delete-confirm-text">{$t('library.removeConfirm', { values: { name: displayName(game) } })}</span>
 							<div class="item-actions">
-								<button class="btn-danger-sm" on:click={() => doDelete(game.sha256)}>Remover</button>
-								<button class="btn-cancel-sm" on:click={() => deletingSha = null}>Cancelar</button>
+								<button class="btn-danger-sm" on:click={() => doDelete(game.sha256)}>{$t('library.remove')}</button>
+								<button class="btn-cancel-sm" on:click={() => deletingSha = null}>{$t('common.cancel')}</button>
 							</div>
 						{:else}
-							<button class="library-game-btn" on:click={() => loadGame(game)} title="Carregar {displayName(game)}">
+							<button class="library-game-btn" on:click={() => loadGame(game)} title={$t('library.loadTooltip', { values: { name: displayName(game) } })}>
 								<span class="game-icon">🎮</span>
 								<div class="game-info">
 									<span class="game-name">
-										{#if isValidatedGame(game.sha256)}<span class="validated-badge" title="Verificado como jogável no Yarner">✓</span>{/if}
+										{#if isValidatedGame(game.sha256)}<span class="validated-badge" title={$t('library.validatedTooltip')}>✓</span>{/if}
 										{displayName(game)}
 									</span>
+									{#if highlightedSha === game.sha256}
+									<span class="duplicate-msg">{$t('library.duplicate')}</span>
+								{:else}
 									<span class="game-meta">{formatSize(game.fileSize)} · {formatDate(game.lastPlayed)}</span>
+								{/if}
 								</div>
 							</button>
-							<button class="btn-remove" on:click={() => requestDelete(game.sha256)} title="Remover da biblioteca">
+							<button class="btn-remove" on:click={() => requestDelete(game.sha256)} title={$t('library.removeTooltip')}>
 								✕
 							</button>
 						{/if}
@@ -141,7 +146,7 @@
 					{#if deletingSha !== game.sha256 && savesPerGame[game.gameName]}
 						<div class="save-list">
 							{#each savesPerGame[game.gameName] as slot}
-								<button class="save-btn" on:click={() => loadSave(slot)} title="Restaurar save: {slot.slotName}">
+								<button class="save-btn" on:click={() => loadSave(slot)} title={$t('library.restoreSaveTooltip', { values: { name: slot.slotName } })}>
 									<span class="save-icon">💾</span>
 									<span class="save-name">{slot.slotName}</span>
 									<span class="save-date">{formatDateTime(slot.timestamp)}</span>
@@ -193,12 +198,12 @@
 
 	@keyframes highlight-flash {
 		0%, 20% {
+			background: color-mix(in srgb, var(--accent) 15%, var(--bg-base));
 			border-color: var(--accent);
-			box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
 		}
 		100% {
+			background: var(--bg-base);
 			border-color: var(--border);
-			box-shadow: none;
 		}
 	}
 
@@ -264,6 +269,12 @@
 	.game-meta {
 		font-size: 0.78rem;
 		color: var(--text-faint);
+	}
+
+	.duplicate-msg {
+		font-size: 0.8rem;
+		color: var(--accent);
+		font-weight: 600;
 	}
 
 	/* ---- Save list abaixo do jogo ---- */

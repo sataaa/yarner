@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { t } from 'svelte-i18n';
 
 	const dispatch = createEventDispatcher<{
 		gameLoaded: { filename: string; data: ArrayBuffer };
@@ -19,7 +20,7 @@
 
 		const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
 		if (!extension || !validExtensions.includes(extension)) {
-			error = `Arquivo inválido. Selecione um arquivo Z-Machine (${validExtensions.join(', ')})`;
+			error = $t('upload.invalidFile', { values: { extensions: validExtensions.join(', ') } });
 			selectedFile = null;
 			return;
 		}
@@ -67,12 +68,12 @@
 			const version = view.getUint8(0);
 
 			if (version < 1 || version > 8) {
-				throw new Error('Este arquivo não parece ser um Z-Machine válido');
+				throw new Error($t('upload.notZMachine'));
 			}
 
 			dispatch('gameLoaded', { filename: file.name, data: arrayBuffer });
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Falha ao carregar o arquivo';
+			error = err instanceof Error ? err.message : $t('upload.loadFailed');
 			selectedFile = null;
 		} finally {
 			isLoading = false;
@@ -88,6 +89,11 @@
 		error = '';
 		if (fileInput) fileInput.value = '';
 	}
+
+	/** Reseta o uploader ao estado inicial (chamado pelo parent após upload) */
+	export function reset() {
+		clearFile();
+	}
 </script>
 
 <div class="file-uploader">
@@ -100,7 +106,7 @@
 		role="button"
 		tabindex="0"
 		on:keydown={(e) => e.key === 'Enter' && triggerFileInput()}
-		aria-label="Área de upload — arraste um arquivo ou clique para selecionar"
+		aria-label={$t('upload.uploadAreaLabel')}
 	>
 		<input
 			type="file"
@@ -113,11 +119,11 @@
 		{#if !selectedFile}
 			<div class="upload-prompt">
 				<div class="icon">{isDragging ? '📂' : '📁'}</div>
-				<h3>Carregar Jogo Z-Machine</h3>
-				<p>Arraste um arquivo ou clique para selecionar</p>
-				<p class="formats">.z3 · .z4 · .z5 · .z8 · .zblorb</p>
+				<h3>{$t('upload.heading')}</h3>
+				<p>{$t('upload.dragPrompt')}</p>
+				<p class="formats">{$t('upload.formats')}</p>
 				<button class="btn-primary" on:click={triggerFileInput} disabled={isLoading}>
-					{isLoading ? 'Carregando...' : 'Escolher Arquivo'}
+					{isLoading ? $t('common.loading') : $t('upload.chooseFile')}
 				</button>
 			</div>
 		{:else}
@@ -126,28 +132,28 @@
 				<h3>{selectedFile.name}</h3>
 				<p class="file-size">{(selectedFile.size / 1024).toFixed(2)} KB</p>
 				{#if isLoading}
-					<p class="loading">Carregando jogo...</p>
+					<p class="loading">{$t('upload.loadingGame')}</p>
 				{:else}
-					<button class="btn-secondary" on:click={clearFile}>Escolher Outro Arquivo</button>
+					<button class="btn-secondary" on:click={clearFile}>{$t('upload.chooseOtherFile')}</button>
 				{/if}
 			</div>
 		{/if}
 
 		{#if error}
 			<div class="error-message">
-				<strong>Erro:</strong> {error}
+				<strong>{$t('common.error')}:</strong> {error}
 			</div>
 		{/if}
 	</div>
 
 	<div class="info-section">
-		<h4>Precisa de um jogo?</h4>
-		<p>Baixe jogos de ficção interativa gratuitamente em:</p>
+		<h4>{$t('upload.needAGame')}</h4>
+		<p>{$t('upload.downloadGames')}</p>
 		<ul>
-			<li><a href="https://ifdb.org/" target="_blank" rel="noopener">IFDB</a> — Interactive Fiction Database</li>
-			<li><a href="https://www.ifarchive.org/" target="_blank" rel="noopener">IF Archive</a> — Jogos clássicos</li>
+			<li><a href="https://ifdb.org/" target="_blank" rel="noopener">IFDB</a> — {$t('upload.ifdb')}</li>
+			<li><a href="https://www.ifarchive.org/" target="_blank" rel="noopener">IF Archive</a> — {$t('upload.ifArchive')}</li>
 		</ul>
-		<p class="note">Procure por arquivos .z5, .z8 ou .zblorb</p>
+		<p class="note">{$t('upload.searchHint')}</p>
 	</div>
 </div>
 

@@ -1,7 +1,11 @@
 <script lang="ts">
+	import '$lib/i18n';
+	import { isLoading } from 'svelte-i18n';
 </script>
 
-<slot />
+{#if !$isLoading}
+	<slot />
+{/if}
 
 <style>
 	/* ===== TEMA: Dark Orange (default) ===== */

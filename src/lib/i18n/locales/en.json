@@ -1,0 +1,143 @@
+{
+	"common": {
+		"cancel": "Cancel",
+		"close": "Close",
+		"error": "Error",
+		"loading": "Loading..."
+	},
+	"header": {
+		"tagline": "Interactive Fiction + AI",
+		"changeTheme": "Change theme: {theme}",
+		"changeLocale": "Language: {locale}"
+	},
+	"game": {
+		"title": "Interactive Fiction",
+		"save": {
+			"title": "Save Game",
+			"tooltip": "Save game",
+			"slotPlaceholder": "Slot name...",
+			"save": "Save",
+			"saving": "...",
+			"saved": "Saved: \"{name}\"",
+			"saveError": "Save error: {error}",
+			"overwrite": "Overwrite",
+			"overwriteSlot": "Save to \"{name}\"",
+			"overwriteConfirm": "Overwrite \"{name}\"?",
+			"slotExists": "This slot already exists and will be overwritten."
+		},
+		"load": {
+			"title": "Load Game",
+			"tooltip": "Load game",
+			"load": "Load",
+			"loaded": "Loaded: \"{name}\"",
+			"loadError": "Load error: {error}",
+			"noSaves": "No saves found for \"{name}\".",
+			"restore": "Restore",
+			"restoreConfirm": "Restore \"{name}\"? Current progress will be lost.",
+			"restored": "[Game restored: \"{name}\"]",
+			"deleteSlotTooltip": "Delete slot"
+		},
+		"delete": {
+			"delete": "Delete",
+			"deleteConfirm": "Delete \"{name}\"?"
+		},
+		"close": {
+			"tooltip": "Close game",
+			"confirm": "Close the game and return to the home screen?"
+		},
+		"restart": {
+			"tooltip": "Restart game",
+			"confirm": "Restart the game? Current progress will be lost.",
+			"restart": "Restart"
+		},
+		"clearOutput": "Clear output",
+		"commandPlaceholder": "Type a command... (↑↓ for history)",
+		"welcome": "Game loaded! Waiting for output...",
+		"welcomeHint": "The game will start shortly.",
+		"loadFailed": "Failed to load the game",
+		"restoreFailed": "Failed to restore the save",
+		"errorOutput": "[Error: {error}]"
+	},
+	"ai": {
+		"heading": "AI Assistant",
+		"remote": "remote",
+		"local": "local",
+		"notesTooltip": "AI Notes",
+		"clearChatTooltip": "Clear chat (keeps notes)",
+		"settingsTooltip": "AI Settings",
+		"sendTooltip": "Send message",
+		"provider": "Provider",
+		"apiKey": "API Key",
+		"apiKeyPlaceholder": "Paste your API key here",
+		"model": "Model",
+		"modelPlaceholder": "Model name",
+		"apiUrl": "API URL",
+		"debug": "Debug",
+		"loadingModels": "loading...",
+		"updatingNotes": "Updating notes...",
+		"emptyNotes": "No notes yet. The AI will create notes as you play.",
+		"emptyChat": "Play a bit and then ask me anything about the game!",
+		"askPlaceholder": "Ask something about the game...",
+		"loadGameFirst": "Load a game first...",
+		"geminiKeyHint": "Get your free key at",
+		"customProvider": "Custom",
+		"debugMemory": "AI Memory (debug)",
+		"debugStream": "Raw stream",
+		"hints": {
+			"whereAmI": "where am I?",
+			"whatToDo": "what should I do?",
+			"myItems": "what items do I have?",
+			"giveHint": "give me a hint"
+		}
+	},
+	"upload": {
+		"heading": "Load Z-Machine Game",
+		"dragPrompt": "Drag a file or click to select",
+		"formats": ".z3 · .z4 · .z5 · .z8 · .zblorb",
+		"chooseFile": "Choose File",
+		"chooseOtherFile": "Choose Another File",
+		"loadingGame": "Loading game...",
+		"invalidFile": "Invalid file. Select a Z-Machine file ({extensions})",
+		"notZMachine": "This file does not appear to be a valid Z-Machine file",
+		"loadFailed": "Failed to load the file",
+		"uploadAreaLabel": "Upload area — drag a file or click to select",
+		"needAGame": "Need a game?",
+		"downloadGames": "Download interactive fiction games for free at:",
+		"ifdb": "Interactive Fiction Database",
+		"ifArchive": "Classic games",
+		"searchHint": "Look for .z5, .z8 or .zblorb files"
+	},
+	"library": {
+		"heading": "Recent Games",
+		"removeConfirm": "Remove \"{name}\"?",
+		"remove": "Remove",
+		"validatedTooltip": "Verified as playable in Yarner",
+		"loadTooltip": "Load {name}",
+		"removeTooltip": "Remove from library",
+		"restoreSaveTooltip": "Restore save: {name}",
+		"duplicate": "Already in library"
+	},
+	"errors": {
+		"noGameLoaded": "No game loaded",
+		"snapshotFailed": "Failed to create game snapshot",
+		"connectionError": "Could not connect to the AI server. Check if the server is running.",
+		"invalidApiKey": "Invalid API key. Check your key and try again.",
+		"rateLimit": "Rate limit reached. Wait a moment and try again.",
+		"unknownError": "Unknown error communicating with the AI.",
+		"apiError": "Error: {message}"
+	},
+	"systemPrompt": {
+		"role": "You are an assistant for text adventure games (interactive fiction). The player is playing \"{gameName}\".",
+		"duties": "Your role:\n- Help the player when they ask for hints or suggestions\n- Analyze the game output and keep notes about progress\n- Respond in English\n- Be concise and helpful, without giving unnecessary spoilers\n- Suggest valid game commands when appropriate (look, examine, go north, take, etc.)\n- If the player asks something generic, use your notes as context",
+		"contextHeader": "GAME CONTEXT - News since the last interaction:",
+		"noNews": "(no game news yet)",
+		"notesHeader": "YOUR NOTES (notebook you keep about the game):",
+		"empty": "(empty)",
+		"notesInstruction": "NOTES INSTRUCTION: At the end of your response, you MAY include a notes update block. If there is nothing to update, DO NOT include the block. Use the format:",
+		"rules": "Rules:\n- ADD: adds a new note at the end of the list (maximum {max} notes)\n- REMOVE N: removes note number N (indices adjust after each operation)\n- UPDATE N text: replaces the content of note number N\n- Operations are processed sequentially (REMOVE changes indices)\n- DO NOT mention the notes block in your visible response\n- Use notes to record: current location, inventory, objectives, visited locations, important things"
+	},
+	"gemmaWorkaround": {
+		"instructions": "[Instructions]",
+		"acknowledged": "Understood, I will follow these instructions."
+	}
+}
