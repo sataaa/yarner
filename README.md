@@ -136,4 +136,4 @@ MIT
 
 ---
 
-**Version:** 0.8.0-alpha | **Status:** Active Development | **Started:** 2026-02-11
+**Version:** 1.0.0-beta | **Status:** Beta | **Started:** 2026-02-11

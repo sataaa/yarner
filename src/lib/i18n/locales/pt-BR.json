@@ -58,6 +58,12 @@
 		"restoreFailed": "Falha ao restaurar o save",
 		"errorOutput": "[Erro: {error}]"
 	},
+	"settings": {
+		"clearAllData": "Limpar todos os dados",
+		"clearWarning": "Isso vai deletar permanentemente TODOS os jogos, saves, dados de IA e configurações. Digite DELETE para confirmar.",
+		"clearTypePlaceholder": "Digite DELETE...",
+		"clearConfirm": "Limpar tudo"
+	},
 	"ai": {
 		"heading": "Assistente IA",
 		"remote": "remoto",
@@ -88,6 +94,19 @@
 			"whatToDo": "o que devo fazer?",
 			"myItems": "que itens tenho?",
 			"giveHint": "dê uma dica"
+		},
+		"onboarding": {
+			"title": "Configurar Assistente IA",
+			"description": "Obtenha uma API key gratuita para ativar o companheiro de IA. Usa o modelo Gemma 27B do Google com limites generosos no plano gratuito (14.000+ requisições/dia).",
+			"apiKeyLabel": "API Key do Gemini",
+			"apiKeyPlaceholder": "Cole sua API key aqui",
+			"getKeyHint": "Crie um projeto e pegue sua API key gratuita em",
+			"disclaimer": "O Yarner usa a API do Gemini do Google. Você é responsável por qualquer cobrança além do plano gratuito.",
+			"validating": "Validando...",
+			"connected": "Conectado! Usando Gemma 27B",
+			"invalidKey": "API key inválida. Verifique e tente novamente.",
+			"connectionError": "Não foi possível conectar. Verifique sua conexão.",
+			"advanced": "Configurações avançadas"
 		}
 	},
 	"upload": {

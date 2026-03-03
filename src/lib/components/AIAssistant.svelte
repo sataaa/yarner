@@ -37,11 +37,77 @@
 	let availableModels: ModelOption[] = [];
 	let loadingModels = false;
 
-	/** Sync local form fields when settings panel opens */
+	// ---- Onboarding state ----
+	let onboardingKey = '';
+	let onboardingStatus: 'idle' | 'validating' | 'success' | 'error' = 'idle';
+	let onboardingError = '';
+	let showOnboardingOverlay = false;
+
+	// Show onboarding when no provider has been configured yet, or when overlay is toggled
+	let hasConfiguredProvider = !!localStorage.getItem('yarner-provider-id');
+	$: showOnboarding = (!hasConfiguredProvider && !localStorage.getItem('yarner-api-key')) || showOnboardingOverlay;
+
+	async function validateOnboardingKey() {
+		const key = onboardingKey.trim();
+		if (!key) return;
+
+		onboardingStatus = 'validating';
+		onboardingError = '';
+
+		try {
+			const models = await fetchAvailableModels('gemini', key);
+			if (models.length > 0) {
+				onboardingStatus = 'success';
+				// Auto-save: set Gemini as provider with Gemma 27B
+				aiChat.setApiKey(key);
+				aiChat.setProvider('gemini', undefined, 'gemma-3-27b-it');
+				hasConfiguredProvider = true;
+				// Transition to chat after a brief delay
+				setTimeout(() => {
+					showOnboardingOverlay = false;
+				}, 1500);
+			} else {
+				onboardingStatus = 'error';
+				onboardingError = $t('ai.onboarding.invalidKey');
+			}
+		} catch {
+			onboardingStatus = 'error';
+			onboardingError = $t('ai.onboarding.connectionError');
+		}
+	}
+
+	/** Sync local form fields when settings panel opens, or toggle onboarding overlay */
 	function openSettings() {
+		// If already showing onboarding overlay, close it
+		if (showOnboardingOverlay) {
+			showOnboardingOverlay = false;
+			showSettings = false;
+			return;
+		}
+
+		// If provider is configured, show onboarding overlay for reconfiguration
+		if (hasConfiguredProvider) {
+			showOnboardingOverlay = true;
+			onboardingKey = localStorage.getItem('yarner-api-key') || '';
+			onboardingStatus = onboardingKey ? 'success' : 'idle';
+			showSettings = false;
+			return;
+		}
+
+		// Fallback: toggle settings panel directly
 		showSettings = !showSettings;
 		if (showSettings) {
 			settingsApiKey = localStorage.getItem('yarner-api-key') || '';
+			settingsModel = $aiModel;
+			settingsApiUrl = $aiApiUrl;
+			loadModelsForProvider($aiProviderId, settingsApiKey);
+		}
+	}
+
+	function toggleAdvancedOnboarding() {
+		showSettings = !showSettings;
+		if (showSettings) {
+			settingsApiKey = onboardingKey || localStorage.getItem('yarner-api-key') || '';
 			settingsModel = $aiModel;
 			settingsApiUrl = $aiApiUrl;
 			loadModelsForProvider($aiProviderId, settingsApiKey);
@@ -235,7 +301,7 @@
 			</button>
 			<button
 				class="btn-icon"
-				class:active={showSettings}
+				class:active={showSettings || showOnboardingOverlay}
 				on:click={openSettings}
 				title={$t('ai.settingsTooltip')}
 			>
@@ -337,106 +403,153 @@
 		</div>
 	{/if}
 
-	<!-- Messages area -->
-	<div class="messages-area" bind:this={messagesContainer}>
-		{#if $aiMessages.length === 0 && !$aiIsStreaming}
-			<div class="empty-chat">
-				<div class="empty-icon">🤖</div>
-				<p>{$t('ai.emptyChat')}</p>
-				<div class="empty-hints">
-					{#each ['whereAmI', 'whatToDo', 'myItems', 'giveHint'] as hintKey}
-						<span
-							role="button"
-							tabindex="0"
-							on:click={async () => { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); }}
-							on:keydown={async (e) => { if (e.key === 'Enter') { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); } }}
-						>
-							"{$t(`ai.hints.${hintKey}`)}"
-						</span>
-					{/each}
-				</div>
-			</div>
-		{/if}
+	{#if showOnboarding}
+		<!-- Onboarding view: shown when no API key configured or when gear toggles overlay -->
+		<div class="onboarding-panel">
+			<div class="onboarding-content">
+				<div class="onboarding-icon">🤖</div>
+				<h3>{$t('ai.onboarding.title')}</h3>
+				<p class="onboarding-desc">{$t('ai.onboarding.description')}</p>
 
-		{#each $aiMessages as msg}
-			<div class="message {msg.role}">
-				<div class="message-content">
-					{#if msg.role === 'assistant'}
-						{@html renderMarkdown(msg.content)}
-					{:else}
-						{msg.content}
-					{/if}
+				<div class="onboarding-field">
+					<label for="onboarding-key">{$t('ai.onboarding.apiKeyLabel')}</label>
+					<input
+						id="onboarding-key"
+						type="password"
+						bind:value={onboardingKey}
+						on:blur={validateOnboardingKey}
+						on:paste={() => setTimeout(validateOnboardingKey, 50)}
+						placeholder={$t('ai.onboarding.apiKeyPlaceholder')}
+						class="onboarding-input"
+						disabled={onboardingStatus === 'validating'}
+					/>
 				</div>
-			</div>
-		{/each}
 
-		<!-- Streaming response (live, with typewriter) -->
-		{#if $aiIsStreaming && displayedStreamText}
-			<div class="message assistant streaming">
-				<div class="message-content">
-					{@html renderMarkdown(stripMemoryBlock(displayedStreamText))}{#if !isUpdatingMemory}<span class="cursor">▊</span>{/if}
-				</div>
-				{#if isUpdatingMemory}
-					<div class="memory-updating">
-						<span class="status-dot"></span>
-						<span class="status-dot"></span>
-						<span class="status-dot"></span>
-						{$t('ai.updatingNotes')}
+				<p class="onboarding-hint">
+					{$t('ai.onboarding.getKeyHint')} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+				</p>
+				<p class="onboarding-disclaimer">{$t('ai.onboarding.disclaimer')}</p>
+
+				{#if onboardingStatus === 'validating'}
+					<div class="onboarding-status validating">
+						<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+						{$t('ai.onboarding.validating')}
 					</div>
 				{/if}
+				{#if onboardingStatus === 'success'}
+					<div class="onboarding-status success">✓ {$t('ai.onboarding.connected')}</div>
+				{/if}
+				{#if onboardingStatus === 'error'}
+					<div class="onboarding-status error">✕ {onboardingError}</div>
+				{/if}
+
+				<button class="onboarding-advanced-link" on:click={toggleAdvancedOnboarding}>
+					{$t('ai.onboarding.advanced')}
+				</button>
+			</div>
+		</div>
+	{:else}
+		<!-- Messages area -->
+		<div class="messages-area" bind:this={messagesContainer}>
+			{#if $aiMessages.length === 0 && !$aiIsStreaming}
+				<div class="empty-chat">
+					<div class="empty-icon">🤖</div>
+					<p>{$t('ai.emptyChat')}</p>
+					<div class="empty-hints">
+						{#each ['whereAmI', 'whatToDo', 'myItems', 'giveHint'] as hintKey}
+							<span
+								role="button"
+								tabindex="0"
+								on:click={async () => { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); }}
+								on:keydown={async (e) => { if (e.key === 'Enter') { messageInput = $t(`ai.hints.${hintKey}`); await handleSendMessage(); } }}
+							>
+								"{$t(`ai.hints.${hintKey}`)}"
+							</span>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			{#each $aiMessages as msg}
+				<div class="message {msg.role}">
+					<div class="message-content">
+						{#if msg.role === 'assistant'}
+							{@html renderMarkdown(msg.content)}
+						{:else}
+							{msg.content}
+						{/if}
+					</div>
+				</div>
+			{/each}
+
+			<!-- Streaming response (live, with typewriter) -->
+			{#if $aiIsStreaming && displayedStreamText}
+				<div class="message assistant streaming">
+					<div class="message-content">
+						{@html renderMarkdown(stripMemoryBlock(displayedStreamText))}{#if !isUpdatingMemory}<span class="cursor">▊</span>{/if}
+					</div>
+					{#if isUpdatingMemory}
+						<div class="memory-updating">
+							<span class="status-dot"></span>
+							<span class="status-dot"></span>
+							<span class="status-dot"></span>
+							{$t('ai.updatingNotes')}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Debug: AI memory -->
+			{#if debugMode && !$aiIsStreaming && $aiMessages.length > 0}
+				<div class="debug-block">
+					<div class="debug-header">🐛 {$t('ai.debugMemory')}</div>
+					<pre class="debug-json">{JSON.stringify($aiMemory, null, 2)}</pre>
+				</div>
+			{/if}
+
+			<!-- Debug: raw streaming -->
+			{#if debugMode && $aiIsStreaming && $aiStreamingContent}
+				<div class="debug-block">
+					<div class="debug-header">🐛 {$t('ai.debugStream')}</div>
+					<pre class="debug-json">{$aiStreamingContent}</pre>
+				</div>
+			{/if}
+
+			<!-- Loading indicator (before first token) -->
+			{#if $aiIsLoading && !$aiStreamingContent}
+				<div class="loading-indicator">
+					<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Error banner -->
+		{#if $aiError}
+			<div class="error-banner" transition:slide={{ duration: 150 }}>
+				{$aiError}
 			</div>
 		{/if}
 
-		<!-- Debug: AI memory -->
-		{#if debugMode && !$aiIsStreaming && $aiMessages.length > 0}
-			<div class="debug-block">
-				<div class="debug-header">🐛 {$t('ai.debugMemory')}</div>
-				<pre class="debug-json">{JSON.stringify($aiMemory, null, 2)}</pre>
-			</div>
-		{/if}
-
-		<!-- Debug: raw streaming -->
-		{#if debugMode && $aiIsStreaming && $aiStreamingContent}
-			<div class="debug-block">
-				<div class="debug-header">🐛 {$t('ai.debugStream')}</div>
-				<pre class="debug-json">{$aiStreamingContent}</pre>
-			</div>
-		{/if}
-
-		<!-- Loading indicator (before first token) -->
-		{#if $aiIsLoading && !$aiStreamingContent}
-			<div class="loading-indicator">
-				<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Error banner -->
-	{#if $aiError}
-		<div class="error-banner" transition:slide={{ duration: 150 }}>
-			{$aiError}
+		<!-- Input area -->
+		<div class="input-area">
+			<input
+				type="text"
+				bind:value={messageInput}
+				on:keydown={handleMessageKeydown}
+				placeholder={$isGameLoaded ? $t('ai.askPlaceholder') : $t('ai.loadGameFirst')}
+				disabled={$aiIsLoading || !$isGameLoaded}
+				class="message-input"
+			/>
+			<button
+				class="btn-send"
+				on:click={handleSendMessage}
+				disabled={$aiIsLoading || !messageInput.trim() || !$isGameLoaded}
+				title={$t('ai.sendTooltip')}
+			>
+				↑
+			</button>
 		</div>
 	{/if}
-
-	<!-- Input area -->
-	<div class="input-area">
-		<input
-			type="text"
-			bind:value={messageInput}
-			on:keydown={handleMessageKeydown}
-			placeholder={$isGameLoaded ? $t('ai.askPlaceholder') : $t('ai.loadGameFirst')}
-			disabled={$aiIsLoading || !$isGameLoaded}
-			class="message-input"
-		/>
-		<button
-			class="btn-send"
-			on:click={handleSendMessage}
-			disabled={$aiIsLoading || !messageInput.trim() || !$isGameLoaded}
-			title={$t('ai.sendTooltip')}
-		>
-			↑
-		</button>
-	</div>
 </div>
 
 <style>
@@ -934,5 +1047,130 @@
 	.btn-send:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+
+	/* ---- Onboarding panel ---- */
+	.onboarding-panel {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		overflow-y: auto;
+	}
+
+	.onboarding-content {
+		max-width: 360px;
+		text-align: center;
+	}
+
+	.onboarding-icon {
+		font-size: 2.5rem;
+		opacity: 0.5;
+		margin-bottom: 0.25rem;
+	}
+
+	.onboarding-content h3 {
+		color: var(--accent);
+		margin: 0.5rem 0;
+		font-size: 1.1rem;
+	}
+
+	.onboarding-desc {
+		color: var(--text-secondary);
+		font-size: 0.85rem;
+		margin-bottom: 1.5rem;
+		line-height: 1.5;
+	}
+
+	.onboarding-field {
+		text-align: left;
+		margin-bottom: 0.75rem;
+	}
+
+	.onboarding-field label {
+		display: block;
+		font-size: 0.75rem;
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: 600;
+		margin-bottom: 0.3rem;
+	}
+
+	.onboarding-input {
+		width: 100%;
+		background: var(--bg-input, var(--bg-base));
+		border: 1px solid var(--border-light, var(--border));
+		color: var(--text-primary);
+		padding: 0.5rem 0.75rem;
+		border-radius: 4px;
+		font-size: 0.9rem;
+	}
+
+	.onboarding-input:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+
+	.onboarding-input:disabled {
+		opacity: 0.5;
+	}
+
+	.onboarding-hint {
+		font-size: 0.78rem;
+		color: var(--text-faint);
+		margin: 0.5rem 0;
+	}
+
+	.onboarding-hint a {
+		color: var(--accent);
+		text-decoration: none;
+	}
+
+	.onboarding-hint a:hover {
+		text-decoration: underline;
+	}
+
+	.onboarding-disclaimer {
+		font-size: 0.72rem;
+		color: var(--text-faint);
+		opacity: 0.7;
+		margin-bottom: 1rem;
+	}
+
+	.onboarding-status {
+		font-size: 0.85rem;
+		padding: 0.4rem 0.75rem;
+		border-radius: 4px;
+		margin: 0.75rem 0;
+	}
+
+	.onboarding-status.validating {
+		color: var(--text-secondary);
+	}
+
+	.onboarding-status.success {
+		color: var(--success-dim-text);
+		background: var(--success-dim-bg);
+	}
+
+	.onboarding-status.error {
+		color: var(--error-text);
+		background: var(--error-bg);
+	}
+
+	.onboarding-advanced-link {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		font-size: 0.75rem;
+		cursor: pointer;
+		text-decoration: underline;
+		margin-top: 0.5rem;
+	}
+
+	.onboarding-advanced-link:hover {
+		color: var(--accent);
 	}
 </style>
