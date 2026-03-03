@@ -11,14 +11,20 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "npx bddgen --config e2e/playwright.config.ts && npx playwright test --config e2e/playwright.config.ts",
+    "test:e2e:headed": "npx bddgen --config e2e/playwright.config.ts && npx playwright test --config e2e/playwright.config.ts --headed",
+    "test:e2e:debug": "npx bddgen --config e2e/playwright.config.ts && npx playwright test --config e2e/playwright.config.ts --debug"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@vitest/coverage-v8": "^4.0.18",
     "fake-indexeddb": "^6.2.5",
+    "playwright-bdd": "^8.4.2",
+    "serve": "^14.2.5",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.0.0",
