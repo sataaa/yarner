@@ -125,10 +125,12 @@ describe('loadGame', () => {
 		expect(get(currentGameName)).toBe('adventure');
 	});
 
-	it('stores gameData for future save/restore', async () => {
+	it('stores a pristine clone of gameData for future save/restore', async () => {
 		const data = new ArrayBuffer(16);
 		await loadGame('zork.z5', data);
-		expect(get(gameState).gameData).toBe(data);
+		const stored = get(gameState).gameData!;
+		expect(stored).not.toBe(data); // must be a clone (ifvms mutates in-place)
+		expect(stored.byteLength).toBe(data.byteLength);
 	});
 
 	it('captures engine output via the onOutput callback', async () => {

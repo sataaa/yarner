@@ -75,7 +75,7 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 
 ## 📊 STATUS ATUAL
 
-**Versão:** 0.8.0-alpha
+**Versão:** 1.0.0-beta
 **Última Sessão:** 12 (2026-03-01)
 **Testes:** 217 passando | 99%+ coverage
 **CI:** GitHub Actions (bloqueia merge em falha)

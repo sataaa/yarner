@@ -1,7 +1,7 @@
 // Polyfill IndexedDB for Node.js test environment
 import 'fake-indexeddb/auto';
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
 	createEmptyMemory,
 	saveAIMemory,
@@ -12,6 +12,7 @@ import {
 	writeSaveSlot,
 	deleteSaveSlot,
 	clearGameAIData,
+	clearAllData,
 	computeSHA256,
 	addGameToLibrary,
 	getGameLibrary,
@@ -296,5 +297,61 @@ describe('updateLastPlayed', () => {
 
 	it('is a no-op for nonexistent SHA', async () => {
 		await expect(updateLastPlayed('ghost-sha-xyz')).resolves.toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// clearAllData
+// ---------------------------------------------------------------------------
+
+describe('clearAllData', () => {
+	// Mock localStorage for Node test environment
+	const store: Record<string, string> = {};
+	const mockLocalStorage = {
+		getItem: (key: string) => store[key] ?? null,
+		setItem: (key: string, value: string) => { store[key] = value; },
+		removeItem: (key: string) => { delete store[key]; }
+	};
+
+	beforeAll(() => {
+		(globalThis as any).localStorage = mockLocalStorage;
+	});
+
+	afterAll(() => {
+		delete (globalThis as any).localStorage;
+	});
+
+	it('clears all IndexedDB stores and localStorage keys', async () => {
+		// Seed all 4 stores
+		await saveAIMemory('clear-all-test', makeMemory('note1'));
+		await saveChatHistory('clear-all-test', [{ role: 'user', content: 'hi', timestamp: 1 }]);
+		await writeSaveSlot('clear-all-test', makeSlot('slot1', 'clear-all-test'));
+		await addGameToLibrary({
+			sha256: 'sha-clear-all',
+			filename: 'test.z5',
+			gameName: 'clear-all-test',
+			fileSize: 100,
+			addedDate: '2026-01-01',
+			lastPlayed: '2026-01-01',
+			gameData: new ArrayBuffer(8)
+		});
+
+		// Seed localStorage
+		localStorage.setItem('yarner-api-key', 'test-key');
+		localStorage.setItem('yarner-theme', 'dark');
+		localStorage.setItem('yarner-provider-id', 'gemini');
+
+		await clearAllData();
+
+		// Verify IDB is empty
+		expect(await loadAIMemory('clear-all-test')).toBeUndefined();
+		expect(await loadChatHistory('clear-all-test')).toEqual([]);
+		expect(await getSaveSlots('clear-all-test')).toEqual({});
+		expect(await getGameLibrary()).toEqual([]);
+
+		// Verify localStorage is cleared
+		expect(localStorage.getItem('yarner-api-key')).toBeNull();
+		expect(localStorage.getItem('yarner-theme')).toBeNull();
+		expect(localStorage.getItem('yarner-provider-id')).toBeNull();
 	});
 });

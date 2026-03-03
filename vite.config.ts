@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
+		port: 5173,
+		strictPort: true,
 		proxy: {
 			// Proxy AI API requests to LM Studio to avoid CORS issues
 			'/ai-api': {

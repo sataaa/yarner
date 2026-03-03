@@ -66,15 +66,19 @@ export async function loadGame(filename: string, gameData: ArrayBuffer): Promise
 			}));
 		});
 
+		// Clone the ArrayBuffer — ifvms.js mutates it in-place during gameplay,
+		// so we need a pristine copy for restart/restore.
+		const pristineData = gameData.slice(0);
+
 		// Load the game (VM runs synchronously until first input request)
 		await engine.loadGame(gameData);
 
-		// Update state to loaded (keep gameData for future save/restore)
+		// Update state to loaded (keep pristine gameData for future save/restore)
 		gameStateStore.update(state => ({
 			...state,
 			isLoaded: true,
 			engine,
-			gameData
+			gameData: pristineData
 		}));
 	} catch (error) {
 		console.error('Failed to load game:', error);
@@ -162,7 +166,9 @@ export async function restartGame(): Promise<void> {
 		}));
 	});
 
-	await engine.loadGame(gameData);
+	// Pass a clone — ifvms.js mutates the buffer in-place, and we need
+	// the stored copy to remain pristine for future restarts.
+	await engine.loadGame(gameData.slice(0));
 
 	gameStateStore.update(s => ({
 		...s,
@@ -235,6 +241,9 @@ export async function loadFromSaveSlot(slot: SaveSlot): Promise<void> {
 		}));
 	});
 
+	// Keep a pristine copy of the game data for future restarts.
+	const pristineData = slot.gameData.slice(0);
+
 	// Restore game history first (so the callback appends after it)
 	gameStateStore.update(s => ({
 		...s,
@@ -243,11 +252,11 @@ export async function loadFromSaveSlot(slot: SaveSlot): Promise<void> {
 		gameHistory: [...slot.gameHistory, `\n${get(t)('game.load.restored', { values: { name: slot.slotName } })}\n`],
 		commandHistory: [],
 		engine: null,
-		gameData: slot.gameData
+		gameData: pristineData
 	}));
 
-	// Restore the VM from the snapshot
-	await engine.restoreFromSnapshot(slot.gameData, slot.snapshot);
+	// Restore the VM from the snapshot (pass a clone — VM mutates the buffer)
+	await engine.restoreFromSnapshot(slot.gameData.slice(0), slot.snapshot);
 
 	gameStateStore.update(s => ({
 		...s,

@@ -214,6 +214,35 @@ export async function updateLastPlayed(sha256: string): Promise<void> {
 
 // ---- Helpers ----
 
+/** All localStorage keys used by Yarner */
+const YARNER_LOCALSTORAGE_KEYS = [
+	'yarner-api-key',
+	'yarner-provider-id',
+	'yarner-api-url',
+	'yarner-model',
+	'yarner-locale',
+	'yarner-theme'
+];
+
+/** Clear ALL Yarner data: all 4 IndexedDB stores + all localStorage keys */
+export async function clearAllData(): Promise<void> {
+	const db = await getDB();
+	const tx = db.transaction(
+		['gameStatus', 'chatHistory', 'gameSaves', 'gameLibrary'],
+		'readwrite'
+	);
+	await Promise.all([
+		tx.objectStore('gameStatus').clear(),
+		tx.objectStore('chatHistory').clear(),
+		tx.objectStore('gameSaves').clear(),
+		tx.objectStore('gameLibrary').clear(),
+		tx.done
+	]);
+	for (const key of YARNER_LOCALSTORAGE_KEYS) {
+		localStorage.removeItem(key);
+	}
+}
+
 /** Create an empty AI memory */
 export function createEmptyMemory(): AIMemory {
 	return [];

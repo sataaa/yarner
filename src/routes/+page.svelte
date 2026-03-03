@@ -7,8 +7,10 @@
 	import GameLibrary from '$lib/components/GameLibrary.svelte';
 	import { gameState, isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import { aiChat } from '$lib/stores/aiChat';
+	import { slide } from 'svelte/transition';
 	import {
 		clearGameAIData,
+		clearAllData,
 		computeSHA256,
 		addGameToLibrary,
 		getGameFromLibrary,
@@ -29,6 +31,23 @@
 	let fileUploaderRef: FileUploader;
 	let displayName = '';
 	let lastSlotName = '';
+
+	// ---- Clear all data ----
+	let showClearConfirm = false;
+	let clearConfirmText = '';
+	let isClearing = false;
+
+	async function handleClearAllData() {
+		if (clearConfirmText !== 'DELETE') return;
+		isClearing = true;
+		try {
+			await clearAllData();
+			window.location.reload();
+		} catch (error) {
+			console.error('Failed to clear data:', error);
+			isClearing = false;
+		}
+	}
 
 	async function handleGameLoaded(event: CustomEvent<{ filename: string; data: ArrayBuffer }>) {
 		const { filename, data } = event.detail;
@@ -151,6 +170,36 @@
 				<FileUploader bind:this={fileUploaderRef} on:gameLoaded={handleGameLoaded} />
 				<GameLibrary bind:this={gameLibraryRef} on:loadFromLibrary={handleLoadFromLibrary} on:loadFromSave={handleLoadFromSave} />
 			</div>
+
+			<div class="clear-data-section">
+				{#if !showClearConfirm}
+					<button class="btn-clear-data" on:click={() => showClearConfirm = true}>
+						{$t('settings.clearAllData')}
+					</button>
+				{:else}
+					<div class="clear-confirm" transition:slide={{ duration: 200 }}>
+						<p class="clear-warning">{$t('settings.clearWarning')}</p>
+						<div class="clear-confirm-row">
+							<input
+								type="text"
+								bind:value={clearConfirmText}
+								placeholder={$t('settings.clearTypePlaceholder')}
+								class="clear-confirm-input"
+							/>
+							<button
+								class="btn-danger-sm"
+								on:click={handleClearAllData}
+								disabled={clearConfirmText !== 'DELETE' || isClearing}
+							>
+								{isClearing ? $t('common.loading') : $t('settings.clearConfirm')}
+							</button>
+							<button class="btn-cancel-sm" on:click={() => { showClearConfirm = false; clearConfirmText = ''; }}>
+								{$t('common.cancel')}
+							</button>
+						</div>
+					</div>
+				{/if}
+			</div>
 		</div>
 	{:else}
 		<div class="container">
@@ -242,8 +291,9 @@
 	.upload-screen {
 		flex: 1;
 		display: flex;
-		align-items: flex-start;
-		justify-content: center;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
 		background: var(--bg-base);
 		overflow-y: auto;
 		padding: 2rem 1rem;
@@ -273,6 +323,88 @@
 			max-width: 600px;
 			align-items: stretch;
 		}
+	}
+
+	.clear-data-section {
+		margin-top: 2rem;
+		text-align: center;
+		width: 100%;
+		max-width: 1000px;
+	}
+
+	.btn-clear-data {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		font-size: 0.75rem;
+		cursor: pointer;
+		text-decoration: underline;
+		opacity: 0.5;
+		transition: opacity 0.2s, color 0.2s;
+	}
+
+	.btn-clear-data:hover {
+		opacity: 1;
+		color: var(--error-text);
+	}
+
+	.clear-confirm {
+		background: var(--bg-elevated);
+		border: 1px solid var(--error-border, var(--border));
+		border-radius: 6px;
+		padding: 1rem;
+		max-width: 420px;
+		margin: 0 auto;
+	}
+
+	.clear-warning {
+		color: var(--error-text);
+		font-size: 0.85rem;
+		margin: 0 0 0.75rem;
+	}
+
+	.clear-confirm-row {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.clear-confirm-input {
+		flex: 1;
+		background: var(--bg-input, var(--bg-base));
+		border: 1px solid var(--border-light, var(--border));
+		color: var(--text-primary);
+		padding: 0.4rem 0.75rem;
+		border-radius: 4px;
+		font-family: monospace;
+		font-size: 0.85rem;
+	}
+
+	.btn-danger-sm {
+		background: var(--error-bg);
+		border: 1px solid var(--error-border, var(--border));
+		color: var(--error-text);
+		padding: 0.35rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.8rem;
+		white-space: nowrap;
+	}
+
+	.btn-danger-sm:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	.btn-cancel-sm {
+		background: var(--btn-bg, transparent);
+		border: 1px solid var(--border-light, var(--border));
+		color: var(--text-secondary);
+		padding: 0.35rem 0.75rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.8rem;
+		white-space: nowrap;
 	}
 
 	.container {

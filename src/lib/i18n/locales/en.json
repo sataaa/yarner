@@ -58,6 +58,12 @@
 		"restoreFailed": "Failed to restore the save",
 		"errorOutput": "[Error: {error}]"
 	},
+	"settings": {
+		"clearAllData": "Clear all data",
+		"clearWarning": "This will permanently delete ALL games, saves, AI data, and settings. Type DELETE to confirm.",
+		"clearTypePlaceholder": "Type DELETE...",
+		"clearConfirm": "Clear everything"
+	},
 	"ai": {
 		"heading": "AI Assistant",
 		"remote": "remote",
@@ -88,6 +94,19 @@
 			"whatToDo": "what should I do?",
 			"myItems": "what items do I have?",
 			"giveHint": "give me a hint"
+		},
+		"onboarding": {
+			"title": "Set up AI Assistant",
+			"description": "Get a free API key to enable the AI companion. Uses Google's Gemma 27B model with generous free-tier limits (14,000+ requests/day).",
+			"apiKeyLabel": "Gemini API Key",
+			"apiKeyPlaceholder": "Paste your API key here",
+			"getKeyHint": "Create a project and get your free API key at",
+			"disclaimer": "Yarner uses Google's Gemini API. You are responsible for any charges beyond the free tier.",
+			"validating": "Validating...",
+			"connected": "Connected! Using Gemma 27B",
+			"invalidKey": "Invalid API key. Please check and try again.",
+			"connectionError": "Could not connect. Check your internet connection.",
+			"advanced": "Advanced settings"
 		}
 	},
 	"upload": {

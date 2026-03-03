@@ -34,6 +34,15 @@
 	let isLoadingSlot = false;
 	let slotNameInput: HTMLInputElement;
 
+	// ---- Click-to-focus: clicking anywhere in game output focuses the input ----
+	let focusFromClick = false;
+
+	function focusCommandInput() {
+		focusFromClick = true;
+		commandInput?.focus();
+		setTimeout(() => { focusFromClick = false; }, 300);
+	}
+
 	// ---- Inline confirmations (no native confirm()) ----
 	let showRestartConfirm = false;
 	let showCloseConfirm = false;
@@ -475,7 +484,8 @@
 		</div>
 	{/if}
 
-	<div class="output-container" bind:this={outputContainer}>
+	<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+	<div class="output-container" bind:this={outputContainer} on:click={focusCommandInput}>
 		{#if gameOutput.length === 0}
 			<div class="welcome-message">
 				<p>{$t('game.welcome')}</p>
@@ -499,6 +509,7 @@
 			on:keydown={handleCommand}
 			placeholder={$t('game.commandPlaceholder')}
 			class="command-input"
+			class:focus-pulse={focusFromClick}
 		/>
 	</div>
 </div>
@@ -859,6 +870,7 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 1.5rem;
+		cursor: text;
 		font-family: 'Courier New', Courier, monospace;
 		font-size: 1rem;
 		line-height: 1.6;
@@ -953,6 +965,15 @@
 	.command-input:focus {
 		outline: none;
 		border-color: var(--accent);
+	}
+
+	.command-input.focus-pulse {
+		animation: input-pulse 0.3s ease-out;
+	}
+
+	@keyframes input-pulse {
+		0% { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+		100% { border-color: var(--accent); box-shadow: none; }
 	}
 
 	.command-input:disabled {
