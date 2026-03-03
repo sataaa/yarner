@@ -14,6 +14,9 @@ export const VALIDATED_GAMES: Record<string, ValidatedGame> = {
 	'0ae5ac229e79094ff368b6669356444af0f35e21d862a1baaa546989085c15fd': {
 		name: 'Zork I: The Great Underground Empire'
 	},
+	'37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79': {
+		name: 'Zork I: The Great Underground Empire'
+	},
 	'3ae7d5558943e9721f3e4b273c8a7faec1a03a604e1ae4ee1cde472c21cb24ac': {
 		name: 'Zork II: The Wizard of Frobozz'
 	}

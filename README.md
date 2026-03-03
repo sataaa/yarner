@@ -7,6 +7,8 @@
 
 Yarner is a web-based interface for playing Z-Machine text adventure games (.z3/.z4/.z5/.z8) with an AI assistant that reads the game output in real time, keeps notes about your progress, and helps when you get stuck. No backend required -- everything runs in the browser.
 
+**[Try it live](https://sataaa.github.io/yarner/)**
+
 ---
 
 ## Features
