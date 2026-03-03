@@ -130,23 +130,23 @@ export function clearHistory(): void {
 /**
  * Restart the current game.
  *
- * Recarrega o jogo do gameData armazenado em vez de usar vm.restart(),
- * pois vm.restart() não passa pelo mesmo ciclo de execução de vm.init()
- * e o output inicial fica retido no buffer sem ser entregue ao callback.
+ * Reloads the game from stored gameData instead of using vm.restart(),
+ * because vm.restart() doesn't go through the same execution cycle as vm.init()
+ * and the initial output gets stuck in the buffer without being delivered to the callback.
  */
 export async function restartGame(): Promise<void> {
 	const state = get(gameStateStore);
 
 	if (!state.engine || !state.gameData) return;
 
-	// Destrói a engine atual
+	// Destroy the current engine
 	state.engine.destroy();
 
 	const engine = createGameEngine();
 	const { gameName, gameData } = state;
 
-	// Limpa o histórico mas mantém isLoaded = true para não desmontar os componentes.
-	// A engine antiga já foi destruída; a nova será atribuída após loadGame.
+	// Clear history but keep isLoaded = true to avoid unmounting components.
+	// The old engine is already destroyed; the new one will be assigned after loadGame.
 	gameStateStore.update(s => ({
 		...s,
 		gameHistory: [],
@@ -154,7 +154,7 @@ export async function restartGame(): Promise<void> {
 		engine: null
 	}));
 
-	// Registra callback ANTES de loadGame — o VM produz output durante init()
+	// Register callback BEFORE loadGame — the VM produces output during init()
 	engine.onOutput((text: string) => {
 		gameStateStore.update(s => ({
 			...s,

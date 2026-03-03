@@ -34,7 +34,7 @@
 	let isLoadingSlot = false;
 	let slotNameInput: HTMLInputElement;
 
-	// ---- Confirmações inline (sem confirm() nativo) ----
+	// ---- Inline confirmations (no native confirm()) ----
 	let showRestartConfirm = false;
 	let showCloseConfirm = false;
 	let pendingLoadSlot: SaveSlot | null = null;
@@ -175,7 +175,7 @@
 		gameState.clearHistory();
 	}
 
-	// Botão de fechar jogo — mostra confirmação inline
+	// Close game button — shows inline confirmation
 	function requestCloseGame() {
 		showCloseConfirm = true;
 		showRestartConfirm = false;
@@ -189,7 +189,7 @@
 		gameState.unloadGame();
 	}
 
-	// Botão de restart — mostra confirmação inline
+	// Restart button — shows inline confirmation
 	function requestRestart() {
 		showRestartConfirm = true;
 		showCloseConfirm = false;
@@ -202,8 +202,8 @@
 		commandHistory = [];
 		historyIndex = -1;
 		currentCommand = '';
-		// Zera status e chat da IA ANTES do restart — evita race condition
-		// com o reactive loadAIStateForGame que dispara quando isLoaded volta a true
+		// Reset AI status and chat BEFORE restart — avoids race condition
+		// with the reactive loadAIStateForGame that triggers when isLoaded becomes true
 		await aiChat.resetAIStateForRestart();
 		await gameState.restartGame();
 	}
@@ -241,7 +241,7 @@
 		if (!name) return;
 		isSaving = true;
 		try {
-			// Inclui o status e chat da IA no slot para restaurar junto com o jogo
+			// Include AI status and chat in the slot to restore alongside the game
 			await gameState.saveGame(name, $aiMemory, $aiMessages);
 			lastSlotName = name;
 			showSavePanel = false;
@@ -254,7 +254,7 @@
 		}
 	}
 
-	/** Sobrescreve o último slot carregado com o estado atual */
+	/** Overwrites the last loaded slot with the current state */
 	async function confirmOverwrite() {
 		if (!lastSlotName) return;
 		isSaving = true;
@@ -271,7 +271,7 @@
 		}
 	}
 
-	// Clique em "Carregar" — pede confirmação inline
+	// Click on "Load" — asks for inline confirmation
 	function requestLoadSlot(slot: SaveSlot) {
 		pendingLoadSlot = slot;
 		deletingSlotName = null;
@@ -284,9 +284,9 @@
 		showLoadPanel = false;
 		pendingLoadSlot = null;
 		try {
-			// Persiste o estado da IA do slot no IndexedDB ANTES de carregar o jogo.
-			// Isso evita race condition: loadFromSaveSlot faz isLoaded=true que
-			// dispara o reactive loadAIStateForGame — que agora encontra os dados corretos.
+			// Persist the AI state from the slot into IndexedDB BEFORE loading the game.
+			// This avoids a race condition: loadFromSaveSlot sets isLoaded=true which
+			// triggers the reactive loadAIStateForGame — which now finds the correct data.
 			await aiChat.restoreAIMemoryFromSave(slot.aiMemory, slot.gameHistory.length, slot.aiChatMessages);
 			await gameState.loadFromSaveSlot(slot);
 			lastSlotName = slot.slotName;
@@ -301,7 +301,7 @@
 		}
 	}
 
-	// Clique em 🗑 — pede confirmação inline
+	// Click on 🗑 — asks for inline confirmation
 	function requestDeleteSlot(slotName: string) {
 		deletingSlotName = slotName;
 		pendingLoadSlot = null;
@@ -353,7 +353,7 @@
 		<div class="save-feedback" transition:slide={{ duration: 150 }}>{saveMessage}</div>
 	{/if}
 
-	<!-- Confirmação inline de fechar jogo -->
+	<!-- Inline close game confirmation -->
 	{#if showCloseConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
 			<span>⚠️ {$t('game.close.confirm')}</span>
@@ -364,7 +364,7 @@
 		</div>
 	{/if}
 
-	<!-- Confirmação inline de restart -->
+	<!-- Inline restart confirmation -->
 	{#if showRestartConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
 			<span>⚠️ {$t('game.restart.confirm')}</span>
@@ -375,7 +375,7 @@
 		</div>
 	{/if}
 
-	<!-- Painel de salvar -->
+	<!-- Save panel -->
 	{#if showSavePanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-title">💾 {$t('game.save.title')}</div>
@@ -417,7 +417,7 @@
 		</div>
 	{/if}
 
-	<!-- Painel de carregar -->
+	<!-- Load panel -->
 	{#if showLoadPanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-header-row">
@@ -428,7 +428,7 @@
 			{#if Object.keys(saveSlots).length === 0}
 				<div class="no-slots">{$t('game.load.noSaves', { values: { name: gameName } })}</div>
 			{:else}
-				<!-- Confirmação de load inline -->
+				<!-- Inline load confirmation -->
 				{#if pendingLoadSlot}
 					<div class="confirm-strip-inline" transition:slide={{ duration: 120 }}>
 						<span>{$t('game.load.restoreConfirm', { values: { name: pendingLoadSlot.slotName } })}</span>
@@ -443,7 +443,7 @@
 					{#each Object.values(saveSlots).sort((a, b) => b.timestamp.localeCompare(a.timestamp)) as slot}
 						<div class="slot-item" class:confirming={deletingSlotName === slot.slotName}>
 							{#if deletingSlotName === slot.slotName}
-								<!-- Confirmação de exclusão inline no próprio item -->
+								<!-- Inline delete confirmation on the item itself -->
 								<span class="delete-confirm-text">{$t('game.delete.deleteConfirm', { values: { name: slot.slotName } })}</span>
 								<div class="slot-actions">
 									<button class="btn-danger-sm" on:click={() => doDeleteSlot(slot.slotName)}>{$t('game.delete.delete')}</button>
@@ -554,7 +554,7 @@
 		cursor: not-allowed;
 	}
 
-	/* ---- Feedback de save ---- */
+	/* ---- Save feedback ---- */
 	.save-feedback {
 		background: var(--success-bg);
 		color: var(--success-text);
@@ -565,7 +565,7 @@
 		flex-shrink: 0;
 	}
 
-	/* ---- Confirmação inline de restart ---- */
+	/* ---- Inline restart confirmation ---- */
 	.confirm-strip {
 		display: flex;
 		align-items: center;
@@ -731,7 +731,7 @@
 		padding: 0.25rem 0;
 	}
 
-	/* Confirmação inline no painel de load */
+	/* Inline confirmation in load panel */
 	.confirm-strip-inline {
 		display: flex;
 		flex-direction: column;

@@ -39,13 +39,13 @@
 			const existing = await getGameFromLibrary(sha256);
 
 			if (existing) {
-				// Jogo já está na biblioteca — destaca na lista com mensagem inline
+				// Game already in library — highlight it in the list with inline message
 				fileUploaderRef?.reset();
 				gameLibraryRef?.highlightGame(sha256);
 				return;
 			}
 
-			// Novo jogo — adiciona à biblioteca (sem iniciar)
+			// New game — add to library (without starting)
 			fileUploaderRef?.reset();
 			const gameName = filename.replace(/\.[^.]+$/, '');
 			const now = new Date().toISOString();
@@ -71,14 +71,14 @@
 		errorMessage = '';
 
 		try {
-			// Resolve displayName ANTES de carregar — evita flash do gameName no título
+			// Resolve displayName BEFORE loading — prevents gameName flash in the title
 			const sha256 = await computeSHA256(data);
 			displayName = getValidatedGameName(sha256) ?? '';
 			lastSlotName = '';
 
-			// Carregar da biblioteca = começar do zero (nova jogatina)
-			// Limpa AI data do IDB ANTES de loadGame — o reactive loadAIStateForGame
-			// vai disparar ao setar isGameLoaded e recarregar do IDB (que agora está vazio).
+			// Loading from library = start fresh (new playthrough)
+			// Clear AI data from IDB BEFORE loadGame — the reactive loadAIStateForGame
+			// triggers when isGameLoaded is set and reloads from IDB (now empty).
 			const gameName = filename.replace(/\.[^.]+$/, '');
 			aiChat.resetAIChat();
 			await clearGameAIData(gameName);
@@ -95,17 +95,17 @@
 		errorMessage = '';
 
 		try {
-			// Resolve displayName pelo SHA original na biblioteca (não do slot.gameData,
-			// que pode ter sido mutado pelo VM durante a execução do jogo).
+			// Resolve displayName from the original SHA in the library (not from slot.gameData,
+			// which may have been mutated by the VM during game execution).
 			const library = await getGameLibrary();
 			const libraryEntry = library.find(g => g.gameName === slot.gameName);
 			displayName = libraryEntry ? (getValidatedGameName(libraryEntry.sha256) ?? '') : '';
 			lastSlotName = slot.slotName;
 
-			// Persiste o estado da IA do slot no IDB ANTES de carregar.
-			// Não usa restoreAIMemoryFromSave() porque ela lê gameState.gameName
-			// que está vazio na tela inicial — o if(gameName) falha e não persiste.
-			// Aqui usamos o gameName do próprio slot diretamente.
+			// Persist the AI state from the slot into IDB BEFORE loading.
+			// Cannot use restoreAIMemoryFromSave() because it reads gameState.gameName
+			// which is empty on the home screen — the if(gameName) check fails.
+			// Here we use the slot's own gameName directly.
 			await saveAIMemory(slot.gameName, slot.aiMemory ?? []);
 			await saveChatHistory(slot.gameName, slot.aiChatMessages ?? []);
 			await gameState.loadFromSaveSlot(slot);

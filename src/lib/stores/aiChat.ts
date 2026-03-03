@@ -150,7 +150,7 @@ function getGameHistoryDiff(): string {
 
 	// Safety: cap very large diffs to avoid blowing up context
 	if (diff.length > MAX_DIFF_ENTRIES) {
-		diff = ['(... atividade anterior omitida por brevidade ...)\n', ...diff.slice(-MAX_DIFF_ENTRIES)];
+		diff = ['(... previous activity omitted for brevity ...)\n', ...diff.slice(-MAX_DIFF_ENTRIES)];
 	}
 
 	return diff.join('');
@@ -299,12 +299,12 @@ export function resetAIChat(): void {
 }
 
 /**
- * Restaura a memória de IA a partir de um slot de save.
- * Chamado após loadFromSaveSlot() para sincronizar o assistente com o estado salvo.
+ * Restores AI memory from a save slot.
+ * Called after loadFromSaveSlot() to sync the assistant with the saved state.
  *
- * @param savedMemory - AIMemory armazenada no slot (pode ser undefined para saves antigos)
- * @param gameHistoryLength - Tamanho do gameHistory restaurado (atualiza o smart diff index)
- * @param savedMessages - Mensagens do chat salvas no slot (pode ser undefined para saves antigos)
+ * @param savedMemory - AIMemory stored in the slot (may be undefined for old saves)
+ * @param gameHistoryLength - Length of the restored gameHistory (updates the smart diff index)
+ * @param savedMessages - Chat messages saved in the slot (may be undefined for old saves)
  */
 export async function restoreAIMemoryFromSave(
 	savedMemory: AIMemory | undefined,
@@ -330,10 +330,10 @@ export async function restoreAIMemoryFromSave(
 }
 
 /**
- * Reseta o estado de IA para um restart de jogo:
- * - Zera a memória (notas)
- * - Limpa mensagens do chat
- * - Persiste o estado zerado no IndexedDB
+ * Resets AI state for a game restart:
+ * - Clears the memory (notes)
+ * - Clears chat messages
+ * - Persists the empty state to IndexedDB
  */
 export async function resetAIStateForRestart(): Promise<void> {
 	const gameS = get(gameState);

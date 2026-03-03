@@ -91,7 +91,7 @@
 		aiChat.loadAIStateForGame($currentGameName);
 	}
 
-	/** Detecta quando o streaming está na fase de receber o bloco de memória (invisível ao usuário) */
+	/** Detects when streaming is in the memory block phase (invisible to the user) */
 	$: isUpdatingMemory = $aiIsStreaming && $aiStreamingContent.includes('MEMORY_UPDATE_START');
 
 	// ---- Typewriter effect ----
@@ -153,7 +153,7 @@
 	}
 
 	/**
-	 * Remove o bloco de memória do conteúdo em streaming.
+	 * Strips the memory block from streaming content.
 	 */
 	function stripMemoryBlock(text: string): string {
 		return text
@@ -162,7 +162,7 @@
 	}
 
 	/**
-	 * Converte markdown básico para HTML seguro (sem XSS).
+	 * Converts basic markdown to safe HTML (XSS-free).
 	 */
 	function renderMarkdown(raw: string): string {
 		let s = raw
@@ -213,7 +213,7 @@
 </script>
 
 <div class="ai-assistant">
-	<!-- Cabeçalho do chat -->
+	<!-- Chat header -->
 	<div class="chat-header">
 		<h2>{$t('ai.heading')} <span class="model-badge" class:remote={currentPreset?.requiresKey}>{$aiModel}{#if currentPreset?.requiresKey} · {$t('ai.remote')}{:else} · {$t('ai.local')}{/if}</span></h2>
 		<div class="header-controls">
@@ -244,7 +244,7 @@
 		</div>
 	</div>
 
-	<!-- Painel de configurações de IA (colapsável) -->
+	<!-- AI settings panel (collapsible) -->
 	{#if showSettings}
 		<div class="settings-panel" transition:slide={{ duration: 200 }}>
 			<div class="settings-field">
@@ -322,7 +322,7 @@
 		</div>
 	{/if}
 
-	<!-- Painel de anotações da IA (colapsável) -->
+	<!-- AI notes panel (collapsible) -->
 	{#if showMemoryPanel}
 		<div class="memory-panel" transition:slide={{ duration: 200 }}>
 			{#if $aiMemory.length === 0}
@@ -337,7 +337,7 @@
 		</div>
 	{/if}
 
-	<!-- Área de mensagens -->
+	<!-- Messages area -->
 	<div class="messages-area" bind:this={messagesContainer}>
 		{#if $aiMessages.length === 0 && !$aiIsStreaming}
 			<div class="empty-chat">
@@ -370,7 +370,7 @@
 			</div>
 		{/each}
 
-		<!-- Resposta em streaming (ao vivo, com typewriter) -->
+		<!-- Streaming response (live, with typewriter) -->
 		{#if $aiIsStreaming && displayedStreamText}
 			<div class="message assistant streaming">
 				<div class="message-content">
@@ -403,7 +403,7 @@
 			</div>
 		{/if}
 
-		<!-- Indicador de carregamento (antes do primeiro token) -->
+		<!-- Loading indicator (before first token) -->
 		{#if $aiIsLoading && !$aiStreamingContent}
 			<div class="loading-indicator">
 				<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
@@ -411,14 +411,14 @@
 		{/if}
 	</div>
 
-	<!-- Banner de erro -->
+	<!-- Error banner -->
 	{#if $aiError}
 		<div class="error-banner" transition:slide={{ duration: 150 }}>
 			{$aiError}
 		</div>
 	{/if}
 
-	<!-- Área de input -->
+	<!-- Input area -->
 	<div class="input-area">
 		<input
 			type="text"
@@ -447,7 +447,7 @@
 		background: var(--bg-base);
 	}
 
-	/* ---- Cabeçalho ---- */
+	/* ---- Header ---- */
 	.chat-header {
 		display: flex;
 		justify-content: space-between;
@@ -572,7 +572,7 @@
 		color: var(--text-secondary);
 	}
 
-	/* ---- Painel de configurações ---- */
+	/* ---- Settings panel ---- */
 	.settings-panel {
 		background: var(--bg-panel);
 		border-bottom: 1px solid var(--border);
@@ -647,7 +647,7 @@
 		letter-spacing: normal;
 	}
 
-	/* ---- Painel de anotações da IA ---- */
+	/* ---- AI notes panel ---- */
 	.memory-panel {
 		background: var(--bg-panel);
 		border-bottom: 1px solid var(--border);
@@ -675,7 +675,7 @@
 		margin-bottom: 0.25rem;
 	}
 
-	/* ---- Área de mensagens ---- */
+	/* ---- Messages area ---- */
 	.messages-area {
 		flex: 1;
 		overflow-y: auto;
@@ -695,7 +695,7 @@
 		border-radius: 4px;
 	}
 
-	/* ---- Estado vazio ---- */
+	/* ---- Empty state ---- */
 	.empty-chat {
 		display: flex;
 		flex-direction: column;
@@ -745,7 +745,7 @@
 		color: var(--accent);
 	}
 
-	/* ---- Mensagens ---- */
+	/* ---- Messages ---- */
 	.message {
 		margin-bottom: 0.75rem;
 		padding: 0.65rem 0.9rem;
@@ -816,7 +816,7 @@
 		51%, 100% { opacity: 0; }
 	}
 
-	/* ---- Indicador de atualização de memória ---- */
+	/* ---- Memory update indicator ---- */
 	.memory-updating {
 		display: flex;
 		align-items: center;
@@ -869,7 +869,7 @@
 		40% { opacity: 1; }
 	}
 
-	/* ---- Banner de erro ---- */
+	/* ---- Error banner ---- */
 	.error-banner {
 		background: var(--error-bg);
 		color: var(--error-text);

@@ -14,7 +14,7 @@ const DEFAULT_LOCALE = 'pt-BR';
 export const SUPPORTED_LOCALES = ['pt-BR', 'en'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
-// PT-BR carregado sync (sem flash); EN lazy
+// PT-BR loaded sync (no flash); EN lazy-loaded
 register('pt-BR', () => Promise.resolve(ptBR));
 register('en', () => import('./locales/en.json'));
 
@@ -26,10 +26,10 @@ function getInitialLocale(): string {
 		return saved;
 	}
 
-	// Auto-detect do navegador
+	// Auto-detect from browser
 	const nav = getLocaleFromNavigator() ?? DEFAULT_LOCALE;
 	if (nav.startsWith('en')) return 'en';
-	return DEFAULT_LOCALE; // pt-BR para pt* e qualquer outro
+	return DEFAULT_LOCALE; // pt-BR for pt* and any other
 }
 
 init({
@@ -37,7 +37,7 @@ init({
 	initialLocale: getInitialLocale()
 });
 
-/** Persiste a escolha de locale no localStorage */
+/** Persists locale choice to localStorage */
 export function setLocale(loc: SupportedLocale): void {
 	locale.set(loc);
 	if (typeof localStorage !== 'undefined') {
@@ -45,7 +45,7 @@ export function setLocale(loc: SupportedLocale): void {
 	}
 }
 
-/** Cicla para o próximo locale (igual ao theme cycling) */
+/** Cycles to the next locale (same pattern as theme cycling) */
 export function cycleLocale(): void {
 	const current = get(locale) ?? DEFAULT_LOCALE;
 	const idx = SUPPORTED_LOCALES.indexOf(current as SupportedLocale);
@@ -53,7 +53,7 @@ export function cycleLocale(): void {
 	setLocale(next);
 }
 
-/** Label de exibição para um locale */
+/** Display label for a locale */
 export function getLocaleLabel(loc: string | null | undefined): string {
 	const labels: Record<string, string> = {
 		'pt-BR': 'PT-BR',
@@ -62,7 +62,7 @@ export function getLocaleLabel(loc: string | null | undefined): string {
 	return labels[loc ?? DEFAULT_LOCALE] ?? (loc ?? DEFAULT_LOCALE);
 }
 
-/** Ícone (bandeira) para um locale */
+/** Icon (flag) for a locale */
 export function getLocaleIcon(loc: string | null | undefined): string {
 	const icons: Record<string, string> = {
 		'pt-BR': '🇧🇷',

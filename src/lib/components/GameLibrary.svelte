@@ -18,32 +18,32 @@
 	}>();
 
 	let games: GameLibraryEntry[] = [];
-	/** Últimos 3 saves de cada jogo, indexados por gameName */
+	/** Last 3 saves per game, indexed by gameName */
 	let savesPerGame: Record<string, SaveSlot[]> = {};
 	let deletingSha: string | null = null;
 	let highlightedSha: string | null = null;
 
-	/** Retorna o nome canônico (se validado) ou o gameName original */
+	/** Returns the canonical name (if validated) or the original gameName */
 	function displayName(game: GameLibraryEntry): string {
 		return getValidatedGameName(game.sha256) ?? game.gameName;
 	}
 
 	onMount(loadLibrary);
 
-	/** Recarregar a lista (chamado pelo parent após adicionar jogo à biblioteca) */
+	/** Reload the list (called by parent after adding a game to the library) */
 	export async function refresh() {
 		await loadLibrary();
 	}
 
-	/** Destaca um jogo na lista com scroll + flash (chamado pelo parent em upload duplicado) */
+	/** Highlights a game in the list with scroll + flash (called by parent on duplicate upload) */
 	export function highlightGame(sha256: string) {
 		highlightedSha = sha256;
-		// Aguarda o DOM atualizar antes de scrollar
+		// Wait for DOM to update before scrolling
 		setTimeout(() => {
 			const el = document.querySelector(`[data-sha="${sha256}"]`);
 			el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 		}, 50);
-		// Remove o highlight após a animação
+		// Remove highlight after the animation
 		setTimeout(() => {
 			highlightedSha = null;
 		}, 2000);
@@ -277,7 +277,7 @@
 		font-weight: 600;
 	}
 
-	/* ---- Save list abaixo do jogo ---- */
+	/* ---- Save list below the game ---- */
 	.save-list {
 		display: flex;
 		flex-direction: column;
@@ -323,7 +323,7 @@
 		flex-shrink: 0;
 	}
 
-	/* ---- Botões existentes ---- */
+	/* ---- Action buttons ---- */
 	.btn-remove {
 		background: none;
 		border: none;
