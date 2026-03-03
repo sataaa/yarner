@@ -131,6 +131,39 @@ A hardcoded map of known game files for display name resolution and verification
 
 ---
 
+## Testing
+
+### Unit Tests
+
+- Framework: Vitest with `fake-indexeddb` for browser API mocking.
+- 218 tests at 99%+ coverage, enforced by GitHub Actions CI.
+
+### E2E Tests
+
+- Framework: Playwright + playwright-bdd (Gherkin BDD).
+- 23 scenarios across 5 feature files, run locally against a production build (`vite preview`).
+- Not in CI — contributors run manually for UI changes.
+
+**Structure:**
+
+| Path | Purpose |
+|------|---------|
+| `e2e/playwright.config.ts` | Config: webServer builds + serves on port 4173 |
+| `e2e/fixtures/test-helpers.ts` | `YarnerPage` page object with reusable helpers + API mocking |
+| `e2e/fixtures/advent.z3` | Colossal Cave Adventure Z3 test fixture |
+| `e2e/features/*.feature` | Gherkin scenarios (game-upload, save-load, game-lifecycle, ai-assistant, settings) |
+| `e2e/steps/*.steps.ts` | Step definitions (common + per-feature) |
+
+**API mocking:** Playwright route interception mocks the Gemini models endpoint and OpenAI-compatible chat completions endpoint. No real API keys needed. The `YarnerPage.mockGeminiAPI()` static method sets up all mocks.
+
+**Key patterns:**
+- Each scenario starts with `freshStart()` — navigate, clear IndexedDB + localStorage, reload.
+- Game upload via `page.setInputFiles()` on the hidden `input.file-input`.
+- Onboarding validation triggered by `blur` event on the API key input.
+- Save panel auto-closes on success; tests wait for `.save-feedback` visibility.
+
+---
+
 ## Key Files
 
 | File | Purpose |
@@ -149,3 +182,5 @@ A hardcoded map of known game files for display name resolution and verification
 | `src/lib/components/GamePanel.svelte` | Game terminal (typewriter, save overwrite) |
 | `src/lib/components/AIAssistant.svelte` | AI panel (settings, debug mode, memory panel) |
 | `src/lib/components/GameLibrary.svelte` | Game library on home screen (SHA-256, quick-load, validated badges) |
+| `e2e/playwright.config.ts` | E2E test config (Playwright + playwright-bdd) |
+| `e2e/fixtures/test-helpers.ts` | `YarnerPage` page object + API mocking |
