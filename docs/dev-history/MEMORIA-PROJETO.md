@@ -1,6 +1,6 @@
 # MEMÓRIA DO PROJETO YARNER
 
-> **PROPÓSITO:** Contexto essencial e decisões do projeto. Detalhes de cada sessão estão em `docs/sessao-NN.md`.
+> **PROPÓSITO:** Contexto essencial e decisões do projeto. Detalhes de cada sessão estão em `sessao-NN.md`.
 
 ---
 
@@ -58,18 +58,18 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 
 | # | Data | Tema | Link |
 |---|------|------|------|
-| 1 | 2026-02-11 | Brainstorm e Setup | [docs/sessao-01.md](docs/sessao-01.md) |
-| 2 | 2026-02-11 | Épico 1: Jogo Funcional | [docs/sessao-02.md](docs/sessao-02.md) |
-| 3 | 2026-02-16 | Validação Épico 1 | [docs/sessao-03.md](docs/sessao-03.md) |
-| 4 | 2026-02-16 | Épico 2: Assistente IA | [docs/sessao-04.md](docs/sessao-04.md) |
-| 5 | 2026-02-18 | Épico 3: Mapa de Locais (depois removido) | [docs/sessao-05.md](docs/sessao-05.md) |
-| 6 | 2026-02-18 | Épico 4: Save/Load | [docs/sessao-06.md](docs/sessao-06.md) |
-| 7 | 2026-02-18 | UI/UX Polish | [docs/sessao-07.md](docs/sessao-07.md) |
-| 8 | 2026-02-21 | Testes, CI e Refatoração | [docs/sessao-08.md](docs/sessao-08.md) |
-| 9 | 2026-03-01 | Temas, Providers, AI Memory Notes | [docs/sessao-09.md](docs/sessao-09.md) |
-| 10 | 2026-03-01 | Fechar Jogo, Biblioteca, Quick-Load | [docs/sessao-10.md](docs/sessao-10.md) |
-| 11 | 2026-03-01 | Jogos Validados, Upload Unificado, Sobrescrita de Saves | [docs/sessao-11.md](docs/sessao-11.md) |
-| 12 | 2026-03-01 | i18n da UI (PT-BR + EN) | [docs/sessao-12.md](docs/sessao-12.md) |
+| 1 | 2026-02-11 | Brainstorm e Setup | [sessao-01.md](sessao-01.md) |
+| 2 | 2026-02-11 | Épico 1: Jogo Funcional | [sessao-02.md](sessao-02.md) |
+| 3 | 2026-02-16 | Validação Épico 1 | [sessao-03.md](sessao-03.md) |
+| 4 | 2026-02-16 | Épico 2: Assistente IA | [sessao-04.md](sessao-04.md) |
+| 5 | 2026-02-18 | Épico 3: Mapa de Locais (depois removido) | [sessao-05.md](sessao-05.md) |
+| 6 | 2026-02-18 | Épico 4: Save/Load | [sessao-06.md](sessao-06.md) |
+| 7 | 2026-02-18 | UI/UX Polish | [sessao-07.md](sessao-07.md) |
+| 8 | 2026-02-21 | Testes, CI e Refatoração | [sessao-08.md](sessao-08.md) |
+| 9 | 2026-03-01 | Temas, Providers, AI Memory Notes | [sessao-09.md](sessao-09.md) |
+| 10 | 2026-03-01 | Fechar Jogo, Biblioteca, Quick-Load | [sessao-10.md](sessao-10.md) |
+| 11 | 2026-03-01 | Jogos Validados, Upload Unificado, Sobrescrita de Saves | [sessao-11.md](sessao-11.md) |
+| 12 | 2026-03-01 | i18n da UI (PT-BR + EN) | [sessao-12.md](sessao-12.md) |
 
 ---
 
@@ -108,7 +108,7 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 - **Persistência:** localStorage (igual ao tema)
 - **Seletor:** header, ao lado do botão de tema
 - **Escopo épico A (sessão 12):** i18n da UI — extrair strings, sistema de tradução, seletor
-- **Escopo épico B (sessão 13+):** documentação em inglês (MANDAMENTOS, MEMORIA-PROJETO, comentários no código, README). docs/sessao-*.md mantidas em PT-BR (registro histórico)
+- **Escopo épico B (sessão 13+):** documentação em inglês (MANDAMENTOS, MEMORIA-PROJETO, comentários no código, README). sessao-*.md mantidas em PT-BR (registro histórico)
 
 ### 📋 Backlog (não refinado)
 1. **Documentação em inglês — Épico B** — traduzir docs internas, comentários, MANDAMENTOS, MEMORIA-PROJETO
