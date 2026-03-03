@@ -1,101 +1,91 @@
-# 🧶 Yarner
+# Yarner
 
-**AI-Assisted Text Adventure Player**
+**Play classic text adventures with a real-time AI companion.**
 
 [![CI](https://github.com/sataaa/yarner/actions/workflows/ci.yml/badge.svg)](https://github.com/sataaa/yarner/actions/workflows/ci.yml)
 
-Yarner is a web-based interface for playing classic z-machine text adventure games with real-time AI assistance. Load any `.z3`–`.z8` file and play alongside an AI companion that reads the game, tracks your progress, maps visited locations, and helps you when you get stuck.
+Yarner is a web-based interface for playing Z-Machine text adventure games (.z3/.z4/.z5/.z8) with an AI assistant that reads the game output in real time, keeps notes about your progress, and helps when you get stuck. No backend required -- everything runs in the browser.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🎮 **Play Z-Machine Games** — Load `.z3`, `.z4`, `.z5`, `.z8` files directly in the browser (no installation)
-- 🤖 **AI Assistant** — Chat with any OpenAI-compatible AI (Claude, GPT-4, LM Studio, Ollama, etc.) about the game
-- 📊 **Split-View Interface** — Game on the left, AI assistant on the right
-- 🗺️ **Location Map** — AI tracks visited rooms, explored/unexplored exits, and notes per location; expandable to a third column
-- 💾 **Save / Load** — Named save slots persist game state + AI memory across sessions
-- 📋 **Game Status Panel** — AI maintains structured context (current location, inventory, objectives, unexplored things)
-- 🌐 **Web-Based** — Zero install; works in any modern browser
+- **Z-Machine in the browser** -- load any .z3, .z4, .z5, or .z8 file and play directly (ifvms.js + custom WebGlk)
+- **AI Assistant** -- streaming chat with any OpenAI-compatible API; the AI follows the game in real time
+- **Multi-provider support** -- LM Studio, Google Gemini, OpenAI, OpenRouter, Ollama, or any custom endpoint
+- **AI Memory Notes** -- the AI maintains up to 20 numbered notes about your progress, persisted per game
+- **Split-view interface** -- game terminal on the left, AI chat on the right
+- **Save/Load** -- named save slots that preserve game state, AI chat history, and AI memory
+- **Game Library** -- drag-and-drop upload, IndexedDB persistence, SHA-256 identification
+- **Quick-load** -- 3 most recent saves per game shown on the home screen
+- **Validated games** -- known games (Zork I, Zork II, etc.) are identified by SHA-256 and display a badge with their canonical name
+- **4 visual themes**
+- **i18n** -- Portuguese (PT-BR) and English, with automatic locale detection
+- **Zero install** -- static SPA, works in any modern browser
 
 ---
 
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ and npm
 
-### Installation
+### Install and run
 
 ```bash
+# Clone the repository
+git clone https://github.com/sataaa/yarner.git
+cd yarner
+
 # Install dependencies
 npm install
 
-# Start development server
+# Start the development server
 npm run dev
 
 # Build for production
 npm run build
 
-# Preview production build
+# Preview the production build
 npm run preview
 ```
 
-### AI Configuration
-
-In the AI Assistant panel, enter:
-
-- **API URL** — e.g. `http://localhost:55511/v1` (LM Studio), `http://localhost:11434/v1` (Ollama), or `https://api.openai.com/v1`
-- **Model** — e.g. `meta-llama-3.1-8b-instruct`, `gpt-4o`, `claude-opus-4-6`
-- **API Key** — optional for local servers; required for OpenAI/Anthropic
-
-> **Note:** Larger models (70B+, GPT-4, Claude) produce significantly better game status tracking and location maps than small models (7B–8B).
+Open `http://localhost:5173`, upload a Z-Machine game file, and start playing.
 
 ---
 
-## 🏗️ Tech Stack
+## AI Configuration
+
+In the AI Assistant panel, select a provider preset or configure manually:
+
+| Setting | Example |
+|---------|---------|
+| **Provider** | LM Studio, Gemini, OpenAI, OpenRouter, Ollama, Custom |
+| **API URL** | `http://localhost:1234/v1` (LM Studio), `https://api.openai.com/v1` (OpenAI) |
+| **Model** | Selected from dropdown (fetched from API) or typed manually |
+| **API Key** | Optional for local servers; required for hosted providers |
+
+Larger models (70B+, GPT-4o, Claude) produce significantly better assistance and memory tracking than smaller models.
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Frontend | SvelteKit (SPA mode, `adapter-static`) |
+|-------|------------|
+| Framework | SvelteKit (SPA mode, `adapter-static`) + TypeScript |
 | Z-Machine Runtime | [ifvms.js](https://github.com/curiousdannii/ifvms.js) + custom WebGlk |
 | AI Integration | OpenAI-compatible API (streaming SSE) |
 | Storage | IndexedDB via [`idb`](https://github.com/jakearchibald/idb) |
-| Deployment | Static hosting (Vercel / Netlify / GitHub Pages) |
+| Internationalization | [svelte-i18n](https://github.com/kaisermann/svelte-i18n) (PT-BR, EN) |
+| Testing | Vitest + @vitest/coverage-v8 |
+| CI | GitHub Actions |
+| Deployment | Any static hosting (Vercel, Netlify, GitHub Pages) |
 
 ---
 
-## 📁 Project Structure
-
-```
-yarner/
-├── src/
-│   ├── routes/
-│   │   └── +page.svelte          # Main page: layout + third column (location map)
-│   └── lib/
-│       ├── components/
-│       │   ├── FileUploader.svelte   # Drag-and-drop .z* file loader
-│       │   ├── GamePanel.svelte      # Game terminal: output, input, save/load UI
-│       │   ├── AIAssistant.svelte    # AI chat panel: messages, status, map toggle
-│       │   └── LocationMap.svelte    # Visited rooms, exits, notes
-│       ├── stores/
-│       │   ├── gameState.ts          # Central game state + save/load logic
-│       │   ├── aiChat.ts             # AI chat store + locationMapExpanded flag
-│       │   └── aiPersistence.ts      # IndexedDB: game status, chat history, save slots
-│       ├── api/
-│       │   └── claude.ts             # OpenAI-compatible API client (streaming)
-│       └── zmachine/
-│           └── zvm-wrapper.ts        # ifvms.js engine + custom WebGlk implementation
-├── static/                           # Static assets
-├── MANDAMENTOS.md                    # Project rules and principles
-├── MEMORIA-PROJETO.md                # Full decision history and session logs
-└── README.md                         # This file
-```
-
----
-
-## 🗺️ Architecture Overview
+## Architecture Overview
 
 ```mermaid
 graph TD
@@ -103,32 +93,20 @@ graph TD
     B -->|game output| C[AIAssistant]
     B <-->|save/load snapshots| D[(IndexedDB)]
     C -->|smart diff: only new output| E[OpenAI-compatible API]
-    E -->|streaming response + GameStatus JSON| C
-    C <-->|GameStatus + chat history| D
-    C -->|locaisVisitados| F[LocationMap]
+    E -->|streaming response + memory ops| C
+    C <-->|AI memory + chat history| D
+    A -->|SHA-256 + metadata| F[GameLibrary]
+    F <-->|game files| D
+    F -->|load game| B
 ```
 
-**Key design decisions:**
-
-- **ifvms.js over Parchment.js** — ifvms.js exposes a full programmatic API for capturing I/O, which is essential for feeding game output to the AI. Parchment.js has no such API.
-- **OpenAI-compatible API** — keeps the AI layer vendor-agnostic; works with local models (LM Studio, Ollama) and hosted providers (OpenAI, Anthropic via proxy).
-- **Game status as AI memory** — instead of resending the full game log each time, the AI maintains a structured JSON status (location, inventory, objectives, `locaisVisitados`) that is persisted in IndexedDB and included as context in every request.
-- **Additive merge for location map** — location data is never overwritten; new data from each AI response is merged into the existing map, so no information is lost even if the model returns a partial response.
-- **Save slots include AI state** — each save slot stores the z-machine snapshot, the game history sent to the AI, and the full `GameStatus`, so restoring a slot also restores the AI's memory to that exact moment.
+For detailed architectural decisions, see [`docs/architecture.md`](./docs/architecture.md).
 
 ---
 
-## 🧪 Testing
+## Testing
 
-The three core TypeScript modules have full unit test coverage enforced by CI:
-
-| File | Tests |
-|---|---|
-| `src/lib/api/claude.ts` | Streaming, parsing, error handling |
-| `src/lib/stores/aiPersistence.ts` | IndexedDB CRUD round-trips |
-| `src/lib/stores/gameState.ts` | Game lifecycle, save/load, engine mocks |
-
-**83 tests · 100% line/branch/function/statement coverage** (thresholds enforced — CI fails if coverage drops).
+217 tests with 99%+ line/branch/function/statement coverage. Coverage thresholds are enforced in CI -- the build fails if coverage drops.
 
 ```bash
 npm test              # run all tests
@@ -137,29 +115,24 @@ npm run test:coverage # run with coverage report
 
 ---
 
-## 📜 Documentation
+## Documentation
 
-- **[MANDAMENTOS.md](./MANDAMENTOS.md)** — Project rules, principles, and development guidelines
-- **[MEMORIA-PROJETO.md](./MEMORIA-PROJETO.md)** — Full history of architectural decisions and session logs
-
----
-
-## 🤝 Contributing
-
-Read `MANDAMENTOS.md` before making any changes. Key points:
-
-1. Always update `MEMORIA-PROJETO.md` with significant decisions
-2. Document the *why*, not just the *what*
-3. Keep solutions simple — MVP-first always
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) -- contribution guidelines
+- [`docs/architecture.md`](./docs/architecture.md) -- system architecture overview
+- [`docs/`](./docs/) -- development session logs and design notes
 
 ---
 
-## 📄 License
+## Contributing
 
-TBD
+Contributions are welcome. Please read [`CONTRIBUTING.md`](./CONTRIBUTING.md) before submitting a pull request.
 
 ---
 
-**Project Started**: 2026-02-11
-**Current Version**: 0.4.0-alpha
-**Status**: 🚧 Active Development
+## License
+
+MIT
+
+---
+
+**Version:** 0.8.0-alpha | **Status:** Active Development | **Started:** 2026-02-11

@@ -40,7 +40,7 @@
 	}
 
 	function handleDragLeave(event: DragEvent) {
-		// Só encerra o drag se saiu do elemento completamente
+		// Only end drag if the cursor left the element completely
 		const rel = event.relatedTarget as Node | null;
 		const target = event.currentTarget as HTMLElement;
 		if (!rel || !target.contains(rel)) {
@@ -63,7 +63,7 @@
 		try {
 			const arrayBuffer = await file.arrayBuffer();
 
-			// Validação básica: verifica se é um arquivo Z-Machine válido
+			// Basic validation: check if it's a valid Z-Machine file
 			const view = new DataView(arrayBuffer);
 			const version = view.getUint8(0);
 
@@ -90,7 +90,7 @@
 		if (fileInput) fileInput.value = '';
 	}
 
-	/** Reseta o uploader ao estado inicial (chamado pelo parent após upload) */
+	/** Resets the uploader to initial state (called by parent after upload) */
 	export function reset() {
 		clearFile();
 	}

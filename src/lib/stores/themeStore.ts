@@ -43,7 +43,7 @@ function createThemeStore() {
 
 export const currentTheme = createThemeStore();
 
-// Aplicar tema ao carregar
+// Apply theme on load
 if (typeof document !== 'undefined') {
 	document.documentElement.setAttribute('data-theme', getInitialTheme());
 }

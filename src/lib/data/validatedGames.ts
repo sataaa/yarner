@@ -1,15 +1,15 @@
 /**
- * Jogos validados — lista hardcoded de jogos conhecidos como jogáveis no Yarner.
+ * Validated games — hardcoded list of games known to be playable in Yarner.
  *
- * Cada entry mapeia o SHA-256 do arquivo do jogo para o nome canônico.
- * A biblioteca usa essa lista para exibir ✓ e o nome oficial do jogo.
+ * Each entry maps the game file's SHA-256 to its canonical name.
+ * The library uses this list to display a ✓ badge and the official game name.
  */
 
 export interface ValidatedGame {
 	name: string;
 }
 
-/** Mapa SHA-256 → dados do jogo validado */
+/** SHA-256 → validated game data map */
 export const VALIDATED_GAMES: Record<string, ValidatedGame> = {
 	'0ae5ac229e79094ff368b6669356444af0f35e21d862a1baaa546989085c15fd': {
 		name: 'Zork I: The Great Underground Empire'
@@ -19,12 +19,12 @@ export const VALIDATED_GAMES: Record<string, ValidatedGame> = {
 	}
 };
 
-/** Retorna o nome canônico de um jogo validado, ou undefined se não reconhecido */
+/** Returns the canonical name of a validated game, or undefined if not recognized */
 export function getValidatedGameName(sha256: string): string | undefined {
 	return VALIDATED_GAMES[sha256]?.name;
 }
 
-/** Verifica se um jogo (por SHA-256) está na lista de validados */
+/** Checks whether a game (by SHA-256) is in the validated list */
 export function isValidatedGame(sha256: string): boolean {
 	return sha256 in VALIDATED_GAMES;
 }

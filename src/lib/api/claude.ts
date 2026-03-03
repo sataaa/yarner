@@ -112,7 +112,7 @@ export async function sendToAIStreaming(
 ): Promise<AIResponse> {
 	const systemPrompt = buildSystemPrompt(gameName, currentMemory, gameHistoryDiff);
 
-	// Gemma não suporta system role — injeta como primeira mensagem user
+	// Gemma doesn't support system role — inject as first user message
 	const supportsSystem = !model.toLowerCase().includes('gemma');
 	const messages = supportsSystem
 		? [{ role: 'system', content: systemPrompt }, ...conversationHistory]
@@ -309,10 +309,10 @@ export function applyMemoryOperations(memory: AIMemory, block: string): AIMemory
 }
 
 /**
- * Busca modelos disponíveis para o provider selecionado.
- * - Gemini: lista da API do Google AI Studio (filtra modelos generateContent)
- * - OpenRouter: lista da API pública (filtra modelos :free)
- * - Outros: retorna array vazio (input de texto livre)
+ * Fetches available models for the selected provider.
+ * - Gemini: lists from the Google AI Studio API (filters generateContent models)
+ * - OpenRouter: lists from the public API (filters :free models)
+ * - Others: returns empty array (free-text input)
  */
 export async function fetchAvailableModels(
 	providerId: string,
@@ -349,7 +349,7 @@ export async function fetchAvailableModels(
 				.sort((a: ModelOption, b: ModelOption) => a.name.localeCompare(b.name));
 		}
 	} catch {
-		// Falha silenciosa — usuário pode digitar manualmente
+		// Silent failure — user can type the model name manually
 	}
 
 	return [];
