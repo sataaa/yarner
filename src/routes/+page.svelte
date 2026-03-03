@@ -25,6 +25,7 @@
 	import { getValidatedGameName } from '$lib/data/validatedGames';
 	import { t, locale } from 'svelte-i18n';
 	import { cycleLocale, getLocaleLabel, getLocaleIcon } from '$lib/i18n';
+	import Yarn from 'phosphor-svelte/lib/Yarn';
 
 	let errorMessage = '';
 	let gameLibraryRef: GameLibrary;
@@ -146,14 +147,14 @@
 
 <main>
 	<header>
-		<span class="logo">🧶 Yarner</span>
+		<span class="logo"><Yarn size={24} weight="regular" /> Yarner</span>
 		<span class="tagline">{$t('header.tagline')}</span>
 		<div class="spacer"></div>
 		<button class="header-btn" on:click={cycleLocale} title={$t('header.changeLocale', { values: { locale: getLocaleLabel($locale) } })}>
 			{getLocaleIcon($locale)} {getLocaleLabel($locale)}
 		</button>
 		<button class="header-btn" on:click={cycleTheme} title={$t('header.changeTheme', { values: { theme: activeTheme.label } })}>
-			{activeTheme.icon} {activeTheme.label}
+			<span class="theme-dot" style="color: var(--accent-color)">{activeTheme.icon}</span> {activeTheme.label}
 		</button>
 	</header>
 
@@ -237,6 +238,9 @@
 		font-weight: 700;
 		color: var(--accent);
 		letter-spacing: -0.01em;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 	}
 
 	.tagline {

@@ -110,10 +110,13 @@ Nota: `restoreAIMemoryFromSave()` usa `get(gameState).gameName` — não funcion
 - **Escopo épico A (sessão 12):** i18n da UI — extrair strings, sistema de tradução, seletor
 - **Escopo épico B (sessão 13+):** documentação em inglês (MANDAMENTOS, MEMORIA-PROJETO, comentários no código, README). sessao-*.md mantidas em PT-BR (registro histórico)
 
+### ✅ Completado (continuação)
+- Épico B: Documentação em inglês (architecture.md, CONTRIBUTING.md, README.md, comentários no código)
+- Build redistribuível — GitHub Pages deploy com adapter-static
+
 ### 📋 Backlog (não refinado)
-1. **Documentação em inglês — Épico B** — traduzir docs internas, comentários, MANDAMENTOS, MEMORIA-PROJETO
-2. **Build redistribuível (HTML único)** — pipeline para gerar HTML puro sem backend, publicar no release do GitHub para download (avaliar criar GitHub Pages para isso)
+_(vazio)_
 
 ---
 
-**Última atualização:** 2026-03-01 (Sessão 12)
+**Última atualização:** 2026-03-03 (Sessão 15)

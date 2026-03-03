@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { t } from 'svelte-i18n';
+	import Folder from 'phosphor-svelte/lib/Folder';
+	import FolderOpen from 'phosphor-svelte/lib/FolderOpen';
+	import GameController from 'phosphor-svelte/lib/GameController';
 
 	const dispatch = createEventDispatcher<{
 		gameLoaded: { filename: string; data: ArrayBuffer };
@@ -118,7 +121,7 @@
 
 		{#if !selectedFile}
 			<div class="upload-prompt">
-				<div class="icon">{isDragging ? '📂' : '📁'}</div>
+				<div class="icon">{#if isDragging}<FolderOpen size={40} weight="regular" />{:else}<Folder size={40} weight="regular" />{/if}</div>
 				<h3>{$t('upload.heading')}</h3>
 				<p>{$t('upload.dragPrompt')}</p>
 				<p class="formats">{$t('upload.formats')}</p>
@@ -128,7 +131,7 @@
 			</div>
 		{:else}
 			<div class="file-info">
-				<div class="icon">🎮</div>
+				<div class="icon"><GameController size={40} weight="regular" /></div>
 				<h3>{selectedFile.name}</h3>
 				<p class="file-size">{(selectedFile.size / 1024).toFixed(2)} KB</p>
 				{#if isLoading}
@@ -196,6 +199,7 @@
 
 	.icon {
 		font-size: 4rem;
+		color: var(--accent);
 	}
 
 	h3 {
