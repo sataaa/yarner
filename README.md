@@ -3,6 +3,7 @@
 **Play classic text adventures with a real-time AI companion.**
 
 [![CI](https://github.com/sataaa/yarner/actions/workflows/ci.yml/badge.svg)](https://github.com/sataaa/yarner/actions/workflows/ci.yml)
+[![Deploy](https://github.com/sataaa/yarner/actions/workflows/deploy.yml/badge.svg)](https://github.com/sataaa/yarner/actions/workflows/deploy.yml)
 
 Yarner is a web-based interface for playing Z-Machine text adventure games (.z3/.z4/.z5/.z8) with an AI assistant that reads the game output in real time, keeps notes about your progress, and helps when you get stuck. No backend required -- everything runs in the browser.
 
@@ -81,7 +82,7 @@ Larger models (70B+, GPT-4o, Claude) produce significantly better assistance and
 | Internationalization | [svelte-i18n](https://github.com/kaisermann/svelte-i18n) (PT-BR, EN) |
 | Testing | Vitest + @vitest/coverage-v8 |
 | CI | GitHub Actions |
-| Deployment | Any static hosting (Vercel, Netlify, GitHub Pages) |
+| Deployment | [GitHub Pages](https://sataaa.github.io/yarner) (auto-deploy on push to main) |
 
 ---
 
