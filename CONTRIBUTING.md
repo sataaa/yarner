@@ -46,6 +46,8 @@ npm run dev
 
 ## Testing Requirements
 
+### Unit Tests
+
 - Every new module with business logic **must** have unit tests.
 - **95%+ coverage** is enforced by CI. Your PR will be blocked if coverage drops below this threshold.
 - Use **mocks** for external dependencies (APIs, browser APIs, IndexedDB).
@@ -56,13 +58,30 @@ npm run dev
   npm run test:coverage
   ```
 
+### E2E Tests
+
+Playwright + playwright-bdd (Gherkin BDD) E2E tests cover the full user journey. These run locally against a production build — they are **not** part of CI.
+
+- **Run E2E tests** before submitting UI-related PRs:
+  ```bash
+  npm run test:e2e            # headless
+  npm run test:e2e:headed     # visible browser
+  npm run test:e2e:debug      # Playwright inspector
+  ```
+- **First run** requires Chromium: `npx playwright install chromium`
+- E2E tests live in `e2e/` with Gherkin `.feature` files and TypeScript step definitions.
+- API calls are mocked via Playwright route interception — no real API keys needed.
+- If your change affects UI behavior, verify the relevant E2E scenarios still pass. Add new scenarios for new user-facing features.
+
 ## CI Pipeline
 
 GitHub Actions runs on every pull request. The following gates must pass before a PR can be merged:
 
 - Build succeeds
-- All tests pass
+- All unit tests pass
 - Coverage meets the 95%+ threshold
+
+E2E tests are local-only and not part of CI. Contributors are expected to run them manually for UI changes.
 
 No broken code reaches `main`. These checks are mandatory and non-negotiable.
 
