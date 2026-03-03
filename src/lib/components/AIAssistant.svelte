@@ -23,6 +23,12 @@
 	import type { ModelOption } from '$lib/api/claude';
 	import { isGameLoaded, currentGameName } from '$lib/stores/gameState';
 	import { t } from 'svelte-i18n';
+	import Notepad from 'phosphor-svelte/lib/Notepad';
+	import Trash from 'phosphor-svelte/lib/Trash';
+	import GearSix from 'phosphor-svelte/lib/GearSix';
+	import Robot from 'phosphor-svelte/lib/Robot';
+	import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
+	import XCircle from 'phosphor-svelte/lib/XCircle';
 
 	let messageInput = '';
 	let messagesContainer: HTMLDivElement;
@@ -61,11 +67,11 @@
 				// Auto-save: set Gemini as provider with Gemma 27B
 				aiChat.setApiKey(key);
 				aiChat.setProvider('gemini', undefined, 'gemma-3-27b-it');
-				hasConfiguredProvider = true;
-				// Transition to chat after a brief delay
+				// Show success message briefly, then transition to chat
 				setTimeout(() => {
+					hasConfiguredProvider = true;
 					showOnboardingOverlay = false;
-				}, 1500);
+				}, 2000);
 			} else {
 				onboardingStatus = 'error';
 				onboardingError = $t('ai.onboarding.invalidKey');
@@ -289,7 +295,7 @@
 				on:click={() => (showMemoryPanel = !showMemoryPanel)}
 				title={$t('ai.notesTooltip')}
 			>
-				📝
+				<Notepad size={18} weight="regular" />
 			</button>
 			<button
 				class="btn-icon"
@@ -297,7 +303,7 @@
 				title={$t('ai.clearChatTooltip')}
 				disabled={$aiMessages.length === 0}
 			>
-				🗑️
+				<Trash size={18} weight="regular" />
 			</button>
 			<button
 				class="btn-icon"
@@ -305,7 +311,7 @@
 				on:click={openSettings}
 				title={$t('ai.settingsTooltip')}
 			>
-				⚙️
+				<GearSix size={18} weight="regular" />
 			</button>
 		</div>
 	</div>
@@ -407,7 +413,7 @@
 		<!-- Onboarding view: shown when no API key configured or when gear toggles overlay -->
 		<div class="onboarding-panel">
 			<div class="onboarding-content">
-				<div class="onboarding-icon">🤖</div>
+				<div class="onboarding-icon"><Robot size={48} weight="regular" /></div>
 				<h3>{$t('ai.onboarding.title')}</h3>
 				<p class="onboarding-desc">{$t('ai.onboarding.description')}</p>
 
@@ -437,10 +443,10 @@
 					</div>
 				{/if}
 				{#if onboardingStatus === 'success'}
-					<div class="onboarding-status success">✓ {$t('ai.onboarding.connected')}</div>
+					<div class="onboarding-status success"><CheckCircle size={16} weight="regular" /> {$t('ai.onboarding.connected')}</div>
 				{/if}
 				{#if onboardingStatus === 'error'}
-					<div class="onboarding-status error">✕ {onboardingError}</div>
+					<div class="onboarding-status error"><XCircle size={16} weight="regular" /> {onboardingError}</div>
 				{/if}
 
 				<button class="onboarding-advanced-link" on:click={toggleAdvancedOnboarding}>
@@ -453,7 +459,7 @@
 		<div class="messages-area" bind:this={messagesContainer}>
 			{#if $aiMessages.length === 0 && !$aiIsStreaming}
 				<div class="empty-chat">
-					<div class="empty-icon">🤖</div>
+					<div class="empty-icon"><Robot size={48} weight="regular" /></div>
 					<p>{$t('ai.emptyChat')}</p>
 					<div class="empty-hints">
 						{#each ['whereAmI', 'whatToDo', 'myItems', 'giveHint'] as hintKey}
@@ -608,6 +614,7 @@
 		border-radius: 4px;
 		cursor: pointer;
 		font-size: 1.1rem;
+		color: var(--accent);
 		transition: background 0.2s;
 		line-height: 1;
 	}
@@ -822,6 +829,7 @@
 	.empty-icon {
 		font-size: 2.5rem;
 		opacity: 0.4;
+		color: var(--accent);
 	}
 
 	.empty-chat p {
@@ -1068,6 +1076,7 @@
 		font-size: 2.5rem;
 		opacity: 0.5;
 		margin-bottom: 0.25rem;
+		color: var(--accent);
 	}
 
 	.onboarding-content h3 {

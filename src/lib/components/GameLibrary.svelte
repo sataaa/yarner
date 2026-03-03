@@ -11,6 +11,10 @@
 	} from '$lib/stores/aiPersistence';
 	import { getValidatedGameName, isValidatedGame } from '$lib/data/validatedGames';
 	import { t, locale } from 'svelte-i18n';
+	import GameController from 'phosphor-svelte/lib/GameController';
+	import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk';
+	import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
+	import X from 'phosphor-svelte/lib/X';
 
 	const dispatch = createEventDispatcher<{
 		loadFromLibrary: { filename: string; data: ArrayBuffer };
@@ -124,10 +128,10 @@
 							</div>
 						{:else}
 							<button class="library-game-btn" on:click={() => loadGame(game)} title={$t('library.loadTooltip', { values: { name: displayName(game) } })}>
-								<span class="game-icon">🎮</span>
+								<span class="game-icon"><GameController size={20} weight="regular" /></span>
 								<div class="game-info">
 									<span class="game-name">
-										{#if isValidatedGame(game.sha256)}<span class="validated-badge" title={$t('library.validatedTooltip')}>✓</span>{/if}
+										{#if isValidatedGame(game.sha256)}<span class="validated-badge" title={$t('library.validatedTooltip')}><CheckCircle size={14} weight="fill" /></span>{/if}
 										{displayName(game)}
 									</span>
 									{#if highlightedSha === game.sha256}
@@ -138,7 +142,7 @@
 								</div>
 							</button>
 							<button class="btn-remove" on:click={() => requestDelete(game.sha256)} title={$t('library.removeTooltip')}>
-								✕
+								<X size={14} weight="regular" />
 							</button>
 						{/if}
 					</div>
@@ -147,7 +151,7 @@
 						<div class="save-list">
 							{#each savesPerGame[game.gameName] as slot}
 								<button class="save-btn" on:click={() => loadSave(slot)} title={$t('library.restoreSaveTooltip', { values: { name: slot.slotName } })}>
-									<span class="save-icon">💾</span>
+									<span class="save-icon"><FloppyDisk size={14} weight="regular" /></span>
 									<span class="save-name">{slot.slotName}</span>
 									<span class="save-date">{formatDateTime(slot.timestamp)}</span>
 								</button>
@@ -243,6 +247,7 @@
 	.game-icon {
 		font-size: 1.5rem;
 		flex-shrink: 0;
+		color: var(--accent);
 	}
 
 	.game-info {
@@ -308,6 +313,7 @@
 	.save-icon {
 		font-size: 0.85rem;
 		flex-shrink: 0;
+		color: var(--accent);
 	}
 
 	.save-name {

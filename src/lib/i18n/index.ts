@@ -62,13 +62,13 @@ export function getLocaleLabel(loc: string | null | undefined): string {
 	return labels[loc ?? DEFAULT_LOCALE] ?? (loc ?? DEFAULT_LOCALE);
 }
 
-/** Icon (flag) for a locale */
+/** Icon (flag) for a locale — text labels for theme consistency */
 export function getLocaleIcon(loc: string | null | undefined): string {
 	const icons: Record<string, string> = {
-		'pt-BR': '🇧🇷',
-		en: '🇺🇸'
+		'pt-BR': 'BR',
+		en: 'US'
 	};
-	return icons[loc ?? DEFAULT_LOCALE] ?? '🌐';
+	return icons[loc ?? DEFAULT_LOCALE] ?? '??';
 }
 
 export { DEFAULT_LOCALE };

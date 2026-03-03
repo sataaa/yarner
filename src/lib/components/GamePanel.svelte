@@ -13,6 +13,12 @@
 	import { gameState, gameEngine as gameEngineStore } from '$lib/stores/gameState';
 	import type { SaveSlot, GameSaveSlots } from '$lib/stores/gameState';
 	import { aiChat, aiMemory, aiMessages } from '$lib/stores/aiChat';
+	import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk';
+	import FolderOpen from 'phosphor-svelte/lib/FolderOpen';
+	import Trash from 'phosphor-svelte/lib/Trash';
+	import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise';
+	import X from 'phosphor-svelte/lib/X';
+	import Warning from 'phosphor-svelte/lib/Warning';
 
 	export let gameName: string = '';
 	export let displayName: string = '';
@@ -341,19 +347,19 @@
 		<h2 class="game-title">{displayName || gameName || $t('game.title')}</h2>
 		<div class="game-controls">
 			<button class="btn-icon" on:click={openSavePanel} title={$t('game.save.tooltip')} disabled={isLoadingSlot}>
-				💾
+				<FloppyDisk size={18} weight="regular" />
 			</button>
 			<button class="btn-icon" on:click={openLoadPanel} title={$t('game.load.tooltip')} disabled={isLoadingSlot}>
-				📂
+				<FolderOpen size={18} weight="regular" />
 			</button>
 			<button class="btn-icon" on:click={clearOutput} title={$t('game.clearOutput')}>
-				🗑️
+				<Trash size={18} weight="regular" />
 			</button>
 			<button class="btn-icon" on:click={requestRestart} title={$t('game.restart.tooltip')}>
-				🔄
+				<ArrowCounterClockwise size={18} weight="regular" />
 			</button>
 			<button class="btn-icon" on:click={requestCloseGame} title={$t('game.close.tooltip')}>
-				❌
+				<X size={18} weight="regular" />
 			</button>
 		</div>
 	</div>
@@ -365,7 +371,7 @@
 	<!-- Inline close game confirmation -->
 	{#if showCloseConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
-			<span>⚠️ {$t('game.close.confirm')}</span>
+			<span><Warning size={16} weight="regular" /> {$t('game.close.confirm')}</span>
 			<div class="confirm-actions">
 				<button class="btn-danger" on:click={doCloseGame}>{$t('common.close')}</button>
 				<button class="btn-cancel-sm" on:click={() => showCloseConfirm = false}>{$t('common.cancel')}</button>
@@ -376,7 +382,7 @@
 	<!-- Inline restart confirmation -->
 	{#if showRestartConfirm}
 		<div class="confirm-strip" transition:slide={{ duration: 150 }}>
-			<span>⚠️ {$t('game.restart.confirm')}</span>
+			<span><Warning size={16} weight="regular" /> {$t('game.restart.confirm')}</span>
 			<div class="confirm-actions">
 				<button class="btn-danger" on:click={doRestart}>{$t('game.restart.restart')}</button>
 				<button class="btn-cancel-sm" on:click={() => showRestartConfirm = false}>{$t('common.cancel')}</button>
@@ -387,7 +393,7 @@
 	<!-- Save panel -->
 	{#if showSavePanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
-			<div class="panel-title">💾 {$t('game.save.title')}</div>
+			<div class="panel-title"><FloppyDisk size={16} weight="regular" /> {$t('game.save.title')}</div>
 
 			{#if lastSlotName}
 				{#if showOverwriteConfirm}
@@ -430,7 +436,7 @@
 	{#if showLoadPanel}
 		<div class="save-load-panel" transition:slide={{ duration: 150 }}>
 			<div class="panel-header-row">
-				<div class="panel-title">📂 {$t('game.load.title')}</div>
+				<div class="panel-title"><FolderOpen size={16} weight="regular" /> {$t('game.load.title')}</div>
 				<button class="btn-cancel" on:click={() => { showLoadPanel = false; pendingLoadSlot = null; deletingSlotName = null; }}>✕</button>
 			</div>
 
@@ -552,6 +558,7 @@
 		border-radius: 4px;
 		cursor: pointer;
 		font-size: 1.1rem;
+		color: var(--accent);
 		transition: background 0.2s;
 		line-height: 1;
 	}

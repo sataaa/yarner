@@ -7,10 +7,10 @@ export interface Theme {
 }
 
 export const themes: Theme[] = [
-	{ id: 'dark-orange', label: 'Dark Orange', icon: '🌑' },
-	{ id: 'amber-terminal', label: 'Amber Terminal', icon: '💛' },
-	{ id: 'green-phosphor', label: 'Green Phosphor', icon: '💚' },
-	{ id: 'parchment', label: 'Parchment', icon: '📜' }
+	{ id: 'dark-orange', label: 'Dark Orange', icon: '●' },
+	{ id: 'amber-terminal', label: 'Amber Terminal', icon: '●' },
+	{ id: 'green-phosphor', label: 'Green Phosphor', icon: '●' },
+	{ id: 'parchment', label: 'Parchment', icon: '●' }
 ];
 
 const STORAGE_KEY = 'yarner-theme';

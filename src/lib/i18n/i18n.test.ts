@@ -66,21 +66,21 @@ describe('i18n', () => {
 	});
 
 	describe('getLocaleIcon', () => {
-		it('returns Brazilian flag for pt-BR', () => {
-			expect(getLocaleIcon('pt-BR')).toBe('🇧🇷');
+		it('returns BR text for pt-BR', () => {
+			expect(getLocaleIcon('pt-BR')).toBe('BR');
 		});
 
-		it('returns US flag for en', () => {
-			expect(getLocaleIcon('en')).toBe('🇺🇸');
+		it('returns US text for en', () => {
+			expect(getLocaleIcon('en')).toBe('US');
 		});
 
-		it('returns globe for unknown locales', () => {
-			expect(getLocaleIcon('fr')).toBe('🌐');
+		it('returns fallback for unknown locales', () => {
+			expect(getLocaleIcon('fr')).toBe('??');
 		});
 
 		it('returns default icon for null/undefined', () => {
-			expect(getLocaleIcon(null)).toBe('🇧🇷');
-			expect(getLocaleIcon(undefined)).toBe('🇧🇷');
+			expect(getLocaleIcon(null)).toBe('BR');
+			expect(getLocaleIcon(undefined)).toBe('BR');
 		});
 	});
 
