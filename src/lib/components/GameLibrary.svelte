@@ -10,11 +10,13 @@
 		type SaveSlot
 	} from '$lib/stores/aiPersistence';
 	import { getValidatedGameName, isValidatedGame } from '$lib/data/validatedGames';
+	import { seedBundledGames } from '$lib/data/bundledGames';
 	import { t, locale } from 'svelte-i18n';
 	import GameController from 'phosphor-svelte/lib/GameController';
 	import FloppyDisk from 'phosphor-svelte/lib/FloppyDisk';
 	import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
 	import X from 'phosphor-svelte/lib/X';
+	import Lock from 'phosphor-svelte/lib/Lock';
 
 	const dispatch = createEventDispatcher<{
 		loadFromLibrary: { filename: string; data: ArrayBuffer };
@@ -54,6 +56,7 @@
 	}
 
 	async function loadLibrary() {
+		await seedBundledGames();
 		games = await getGameLibrary();
 		const saves: Record<string, SaveSlot[]> = {};
 		for (const game of games) {
@@ -141,9 +144,15 @@
 								{/if}
 								</div>
 							</button>
+							{#if game.bundled}
+							<span class="btn-bundled" title={$t('library.bundledTooltip')}>
+								<Lock size={14} weight="regular" />
+							</span>
+						{:else}
 							<button class="btn-remove" on:click={() => requestDelete(game.sha256)} title={$t('library.removeTooltip')}>
 								<X size={14} weight="regular" />
 							</button>
+						{/if}
 						{/if}
 					</div>
 
@@ -345,6 +354,16 @@
 	.btn-remove:hover {
 		background: var(--error-delete-hover-bg);
 		color: var(--error-delete-hover-text);
+	}
+
+	.btn-bundled {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.3rem 0.5rem;
+		color: var(--text-faint);
+		flex-shrink: 0;
+		cursor: default;
 	}
 
 	.delete-confirm-text {

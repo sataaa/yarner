@@ -1,8 +1,8 @@
 Feature: Game Upload and Play
 
-  Scenario: Upload a valid Z3 game file
+  Scenario: Upload a valid Z5 game file
     Given I am on the home screen
-    When I upload a Z3 game file
+    When I upload a Z5 game file
     Then the game appears in the library
 
   Scenario: Start game from library
@@ -26,3 +26,8 @@ Feature: Game Upload and Play
     Given a game is running
     When I click the game output area
     Then the command input is focused
+
+  Scenario: Bundled game is present without any upload
+    Given I am on the home screen
+    Then the bundled game appears in the library
+    And the bundled game has no remove button

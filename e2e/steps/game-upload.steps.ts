@@ -4,14 +4,14 @@ import { YarnerPage } from '../fixtures/test-helpers';
 
 const { When, Then } = createBdd();
 
-When('I upload a Z3 game file', async ({ page }) => {
+When('I upload a Z5 game file', async ({ page }) => {
 	const yarner = new YarnerPage(page);
 	await yarner.uploadGame();
 });
 
 When('I click the game in the library', async ({ page }) => {
 	const yarner = new YarnerPage(page);
-	await yarner.clickGameInLibrary('advent');
+	await yarner.clickGameInLibrary('etude');
 });
 
 When('I type the command {string}', async ({ page }, command: string) => {
@@ -31,7 +31,7 @@ When('I click the game output area', async ({ page }) => {
 
 Then('the game appears in the library', async ({ page }) => {
 	const yarner = new YarnerPage(page);
-	await yarner.isGameInLibrary('advent');
+	await yarner.isGameInLibrary('etude');
 });
 
 Then('the game panel is visible', async ({ page }) => {
@@ -59,4 +59,15 @@ Then('the game output updates', async ({ page }) => {
 
 Then('the duplicate message is shown', async ({ page }) => {
 	await expect(page.locator('.duplicate-msg')).toBeVisible({ timeout: 5_000 });
+});
+
+Then('the bundled game appears in the library', async ({ page }) => {
+	const yarner = new YarnerPage(page);
+	await yarner.isGameInLibrary('Colossal Cave Adventure');
+});
+
+Then('the bundled game has no remove button', async ({ page }) => {
+	const wrapper = page.locator('.library-item-wrapper').filter({ hasText: 'Colossal Cave Adventure' });
+	await expect(wrapper.locator('.btn-remove')).toHaveCount(0);
+	await expect(wrapper.locator('.btn-bundled')).toBeVisible();
 });

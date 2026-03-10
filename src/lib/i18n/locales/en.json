@@ -134,7 +134,8 @@
 		"loadTooltip": "Load {name}",
 		"removeTooltip": "Remove from library",
 		"restoreSaveTooltip": "Restore save: {name}",
-		"duplicate": "Already in library"
+		"duplicate": "Already in library",
+		"bundledTooltip": "Built-in game (cannot be removed)"
 	},
 	"errors": {
 		"noGameLoaded": "No game loaded",

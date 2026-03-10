@@ -134,7 +134,8 @@
 		"loadTooltip": "Carregar {name}",
 		"removeTooltip": "Remover da biblioteca",
 		"restoreSaveTooltip": "Restaurar save: {name}",
-		"duplicate": "Já na biblioteca"
+		"duplicate": "Já na biblioteca",
+		"bundledTooltip": "Jogo embutido (não pode ser removido)"
 	},
 	"errors": {
 		"noGameLoaded": "Nenhum jogo carregado",

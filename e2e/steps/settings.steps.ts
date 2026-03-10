@@ -78,8 +78,10 @@ Then('the locale is still changed', async ({ page }) => {
 	expect(current).toBe(afterClick);
 });
 
-Then('the library is empty', async ({ page }) => {
+Then('only the bundled game remains', async ({ page }) => {
 	const yarner = new YarnerPage(page);
+	// After clear, the page reloads and seedBundledGames re-adds the bundled game
+	await yarner.isGameInLibrary('Colossal Cave Adventure');
 	const count = await yarner.getLibraryGameCount();
-	expect(count).toBe(0);
+	expect(count).toBe(1);
 });

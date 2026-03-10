@@ -11,6 +11,9 @@ export interface ValidatedGame {
 
 /** SHA-256 → validated game data map */
 export const VALIDATED_GAMES: Record<string, ValidatedGame> = {
+	'03c19b3730f1b46b6e882944a255d1d58e4148e51fcce423dcd96792f476ebfa': {
+		name: 'Colossal Cave Adventure'
+	},
 	'0ae5ac229e79094ff368b6669356444af0f35e21d862a1baaa546989085c15fd': {
 		name: 'Zork I: The Great Underground Empire'
 	},

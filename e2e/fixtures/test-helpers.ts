@@ -43,7 +43,7 @@ export class YarnerPage {
 
 	// --- Upload ---
 
-	async uploadGame(filename: string = 'advent.z3') {
+	async uploadGame(filename: string = 'etude.z5') {
 		const filePath = path.join(FIXTURE_DIR, filename);
 		const input = this.page.locator('input.file-input');
 		await input.setInputFiles(filePath);

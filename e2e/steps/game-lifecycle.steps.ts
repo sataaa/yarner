@@ -26,7 +26,7 @@ When('I close the game and confirm', async ({ page }) => {
 
 When('I click the game in the library again', async ({ page }) => {
 	const yarner = new YarnerPage(page);
-	await yarner.clickGameInLibrary('advent');
+	await yarner.clickGameInLibrary('etude');
 	await yarner.waitForGamePanel();
 	await yarner.waitForGameOutput();
 });
@@ -36,7 +36,7 @@ Then('the game output is reset to initial state', async ({ page }) => {
 	// Wait for fresh output to appear
 	await yarner.waitForGameOutput();
 	const output = await yarner.getGameOutputText();
-	// The initial output of advent includes a welcome/intro
+	// The initial output of etude includes a welcome/intro
 	expect(output.length).toBeGreaterThan(0);
 });
 
@@ -51,5 +51,5 @@ Then('I am back on the home screen', async ({ page }) => {
 
 Then('the game is still in the library', async ({ page }) => {
 	const yarner = new YarnerPage(page);
-	await yarner.isGameInLibrary('advent');
+	await yarner.isGameInLibrary('etude');
 });

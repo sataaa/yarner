@@ -22,7 +22,7 @@ Feature: Settings — Theme, Locale, Clear Data
     And I reload the page
     Then the locale is still changed
 
-  Scenario: Clear all data empties the library
+  Scenario: Clear all data removes user-added games
     Given I have uploaded a game
     When I clear all data
-    Then the library is empty
+    Then only the bundled game remains
