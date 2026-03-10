@@ -54,6 +54,7 @@ export interface GameLibraryEntry {
 	addedDate: string;
 	lastPlayed: string;
 	gameData: ArrayBuffer;
+	bundled?: boolean; // true for games shipped with Yarner (cannot be removed)
 }
 
 // ---- IndexedDB Schema ----
@@ -194,11 +195,10 @@ export async function getGameFromLibrary(sha256: string): Promise<GameLibraryEnt
 export async function removeGameFromLibrary(sha256: string): Promise<void> {
 	const db = await getDB();
 	const entry = await db.get('gameLibrary', sha256);
-	if (entry) {
-		await db.delete('gameSaves', entry.gameName);
-		await db.delete('gameStatus', entry.gameName);
-		await db.delete('chatHistory', entry.gameName);
-	}
+	if (!entry || entry.bundled) return; // cannot remove bundled games
+	await db.delete('gameSaves', entry.gameName);
+	await db.delete('gameStatus', entry.gameName);
+	await db.delete('chatHistory', entry.gameName);
 	await db.delete('gameLibrary', sha256);
 }
 

@@ -27,8 +27,8 @@ Given('a game is running', async ({ page }) => {
 	const yarner = await freshStart(page);
 	await yarner.uploadGame();
 	// Wait for it to appear in library, then click to start
-	await yarner.isGameInLibrary('advent');
-	await yarner.clickGameInLibrary('advent');
+	await yarner.isGameInLibrary('etude');
+	await yarner.clickGameInLibrary('etude');
 	await yarner.waitForGamePanel();
 	await yarner.waitForGameOutput();
 });
@@ -37,8 +37,8 @@ Given('a game is running with AI mocked', async ({ page }) => {
 	await YarnerPage.mockGeminiAPI(page);
 	const yarner = await freshStart(page);
 	await yarner.uploadGame();
-	await yarner.isGameInLibrary('advent');
-	await yarner.clickGameInLibrary('advent');
+	await yarner.isGameInLibrary('etude');
+	await yarner.clickGameInLibrary('etude');
 	await yarner.waitForGamePanel();
 	await yarner.waitForGameOutput();
 });

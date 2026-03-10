@@ -43,6 +43,6 @@ Then('I see load feedback', async ({ page }) => {
 Then('I see the save badge in the library', async ({ page }) => {
 	const yarner = new YarnerPage(page);
 	await yarner.isOnHomeScreen();
-	const saveCount = await yarner.librarySaveBadgesFor('advent');
+	const saveCount = await yarner.librarySaveBadgesFor('etude');
 	expect(saveCount).toBeGreaterThan(0);
 });

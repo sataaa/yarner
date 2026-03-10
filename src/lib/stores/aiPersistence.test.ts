@@ -269,6 +269,14 @@ describe('removeGameFromLibrary', () => {
 		expect(entry).toBeUndefined();
 	});
 
+	it('cannot remove a bundled game', async () => {
+		const entry: GameLibraryEntry = { ...makeLibraryEntry('bundled-sha', 'advent'), bundled: true };
+		await addGameToLibrary(entry);
+		await removeGameFromLibrary('bundled-sha');
+		const result = await getGameFromLibrary('bundled-sha');
+		expect(result).toBeDefined(); // still there
+	});
+
 	it('also removes saves, AI memory and chat history for that game', async () => {
 		const gameName = 'cascade-game';
 		await addGameToLibrary(makeLibraryEntry('sha-lib-cascade', gameName));
